@@ -62,6 +62,7 @@
 #include <ipmitool/ipmi_firewall.h>
 #include <ipmitool/ipmi_hpmfwupg.h>
 #include <ipmitool/ipmi_ekanalyzer.h>
+#include <ipmitool/ipmi_cxoem.h>
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
@@ -101,6 +102,7 @@ struct ipmi_cmd ipmitool_cmd_list[] = {
 	{ ipmi_channel_main, "channel", "Configure Management Controller channels" },
 	{ ipmi_session_main, "session", "Print session information" },
 	{ ipmi_sunoem_main,  "sunoem",  "OEM Commands for Sun servers" },
+	{ ipmi_cxoem_main,   "cxoem",   "OEM Commands for Calxeda servers" },
 	{ ipmi_kontronoem_main, "kontronoem", "OEM Commands for Kontron devices"},
 	{ ipmi_picmg_main,   "picmg",   "Run a PICMG/ATCA extended cmd"},
 	{ ipmi_fwum_main,    "fwum",	"Update IPMC using Kontron OEM Firmware Update Manager" },

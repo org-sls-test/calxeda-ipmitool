@@ -1904,7 +1904,7 @@ fi
 
 # Define the identity of the package.
  PACKAGE=ipmitool
- VERSION=1.8.11
+ VERSION=1.8.11.0
 
 
 cat >>confdefs.h <<_ACEOF

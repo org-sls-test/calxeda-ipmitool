@@ -121,8 +121,12 @@ get_lan_param_select(struct ipmi_intf * intf, uint8_t chan, int param, int selec
 	struct ipmi_rs * rsp;
 	struct ipmi_rq req;
 	uint8_t msg_data[4];
+	int tmp = 0;
 
-	p = &ipmi_lan_params[param];
+	if (param >= 193)
+		tmp = 28 + (param - 193); 
+	else tmp = param;
+	p = &ipmi_lan_params[tmp];
 	if (p == NULL)
 		return NULL;
 
@@ -734,6 +738,38 @@ ipmi_lan_print(struct ipmi_intf * intf, uint8_t chan)
 		printf("%-24s: %02x:%02x:%02x:%02x:%02x:%02x\n", p->desc,
 		       p->data[0], p->data[1], p->data[2], p->data[3], p->data[4], p->data[5]);
 
+	p = get_lan_param(intf, chan, IPMI_LANP_TFTP_SERVER_IP);
+	if (p == NULL)
+		return -1;
+	if (p->data != NULL)
+		printf("%-24s: %d.%d.%d.%d\n", p->desc,
+		       p->data[0], p->data[1], p->data[2], p->data[3]);
+
+	p = get_lan_param(intf, chan, IPMI_LANP_NTP_SERVER_IP);
+	if (p == NULL)
+		return -1;
+	if (p->data != NULL)
+		printf("%-24s: %d.%d.%d.%d\n", p->desc,
+		       p->data[0], p->data[1], p->data[2], p->data[3]);
+
+	p = get_lan_param(intf, chan, IPMI_LANP_TFTP_UDP_PORT);
+	if (p == NULL)
+		return -1;
+	if (p->data != NULL) {
+		int *port;
+		port = (int *)&p->data[0];
+		printf("%-24s: %d\n", p->desc, *port);
+	}
+
+	p = get_lan_param(intf, chan, IPMI_LANP_NTP_UDP_PORT);
+	if (p == NULL)
+		return -1;
+	if (p->data != NULL) {
+		int *port;
+		port = (int *)&p->data[0];
+		printf("%-24s: %d\n", p->desc, *port);
+	}
+
 	p = get_lan_param(intf, chan, IPMI_LANP_VLAN_ID);
 	if (p != NULL && p->data != NULL) {
 		int id = ((p->data[1] & 0x0f) << 8) + p->data[0];
@@ -1238,6 +1274,19 @@ get_cmdline_cipher_suite_priv_data(char * arg, uint8_t * buf)
 	return ret;
 }
 
+static int
+get_cmdline_int(char * arg, uint8_t * buf)
+{
+	uint32_t port;
+	if (sscanf(arg, "%d", &port) != 1) {
+		lprintf(LOG_ERR, "Invalid port address: %s", arg);
+		return -1;
+	}
+	buf[1] = (port & 0xff00) >> 8;
+	buf[0] = (port & 0xff);
+	return 0;
+}
+
 
 static int
 get_cmdline_ipaddr(char * arg, uint8_t * buf)
@@ -1265,6 +1314,10 @@ static void ipmi_lan_set_usage(void)
 	lprintf(LOG_NOTICE, "  defgw macaddr <x:x:x:x:x:x>    Set default gateway MAC address");
 	lprintf(LOG_NOTICE, "  bakgw ipaddr <x.x.x.x>         Set backup gateway IP address");
 	lprintf(LOG_NOTICE, "  bakgw macaddr <x:x:x:x:x:x>    Set backup gateway MAC address");
+	lprintf(LOG_NOTICE, "  tftp  ipaddr <x.x.x.x>         Set tftp server    IP address");
+	lprintf(LOG_NOTICE, "  ntp   ipaddr <x.x.x.x>         Set ntp server     IP address");
+	lprintf(LOG_NOTICE, "  tftp port    <num>             Set tftp server UDP port num ");
+	lprintf(LOG_NOTICE, "  ntp  port    <num>             Set ntp  server UDP port num ");
 	lprintf(LOG_NOTICE, "  password <password>            Set session password for this channel");
 	lprintf(LOG_NOTICE, "  snmp <community string>        Set SNMP public community string");
 	lprintf(LOG_NOTICE, "  user                           Enable default user for this channel");
@@ -1639,6 +1692,52 @@ ipmi_lan_set(struct ipmi_intf * intf, int argc, char ** argv)
 			rc = set_lan_param(intf, chan, IPMI_LANP_RMCP_PRIV_LEVELS, data, 9);
 		}
 	}
+	else if (strncmp(argv[1], "tftp", 4) == 0) {
+		if (argc < 4 || (strncmp(argv[2], "help", 4) == 0)) {
+			lprintf(LOG_NOTICE, "LAN set tftp Commands: ipaddr, port");
+		}
+		else if ((strncmp(argv[2], "ipaddr", 5) == 0) &&
+			 (get_cmdline_ipaddr(argv[3], data) == 0)) {
+			printf("Setting tftp ip %s to %d.%d.%d.%d\n",
+			       ipmi_lan_params[28].desc,
+			       data[0], data[1], data[2], data[3]);
+			rc = set_lan_param(intf, chan, IPMI_LANP_TFTP_SERVER_IP, data, 4);
+		}
+		else if ((strncmp(argv[2], "port", 4) == 0) &&
+			 (get_cmdline_int(argv[3], data) == 0)) {
+			printf("Setting tftp port %s to %02x%02x\n",
+			       ipmi_lan_params[29].desc,
+			       data[1], data[0]);
+			rc = set_lan_param(intf, chan, IPMI_LANP_TFTP_UDP_PORT, data, 2);
+		}
+		else {
+			ipmi_lan_set_usage();
+			return -1;
+		}
+	}		
+	else if (strncmp(argv[1], "ntp", 3) == 0) {
+		if (argc < 4 || (strncmp(argv[2], "help", 4) == 0)) {
+			lprintf(LOG_NOTICE, "LAN set ntp Commands: ipaddr, port");
+		}
+		else if ((strncmp(argv[2], "ipaddr", 5) == 0) &&
+			 (get_cmdline_ipaddr(argv[3], data) == 0)) {
+			printf("Setting ntp ip %s to %d.%d.%d.%d\n",
+			       ipmi_lan_params[30].desc,
+			       data[0], data[1], data[2], data[3]);
+			rc = set_lan_param(intf, chan, IPMI_LANP_NTP_SERVER_IP, data, 4);
+		}
+		else if ((strncmp(argv[2], "port", 4) == 0) &&
+			 (get_cmdline_int(argv[3], data) == 0)) {
+			printf("Setting ntp port %s to %02x%02x\n",
+			       ipmi_lan_params[31].desc,
+			       data[1], data[0]);
+			rc = set_lan_param(intf, chan, IPMI_LANP_NTP_UDP_PORT, data, 2);
+		}
+		else {
+			ipmi_lan_set_usage();
+			return -1;
+		}
+	}		
 	else {
 		ipmi_lan_set_usage();
 	}

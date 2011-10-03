@@ -87,7 +87,7 @@ am_libipmitool_la_OBJECTS = helper.lo ipmi_sdr.lo ipmi_sel.lo \
 	ipmi_sunoem.lo ipmi_fwum.lo ipmi_picmg.lo ipmi_main.lo \
 	ipmi_tsol.lo ipmi_firewall.lo ipmi_kontronoem.lo \
 	ipmi_hpmfwupg.lo ipmi_sdradd.lo ipmi_ekanalyzer.lo \
-	ipmi_gendev.lo
+	ipmi_gendev.lo ipmi_cxoem.lo
 libipmitool_la_OBJECTS = $(am_libipmitool_la_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp

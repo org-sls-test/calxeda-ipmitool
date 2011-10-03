@@ -240,6 +240,7 @@ struct ipmi_rs {
 #define IPMI_NETFN_PICMG		0x2C
 #define IPMI_NETFN_ISOL			0x34
 #define IPMI_NETFN_TSOL			0x30
+#define IPMI_NETFN_CX_OEM		0x3e
 
 #define IPMI_BMC_SLAVE_ADDR		0x20
 #define IPMI_REMOTE_SWID		0x81

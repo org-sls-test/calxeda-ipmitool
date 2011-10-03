@@ -138,6 +138,7 @@ const struct valstr ipmi_netfn_vals[] = {
 	{ IPMI_NETFN_FIRMWARE,	"Firmware" },
 	{ IPMI_NETFN_STORAGE,	"Storage" },
 	{ IPMI_NETFN_TRANSPORT,	"Transport" },
+	{ IPMI_NETFN_CX_OEM,	"cx_oem" },
 	{ 0xff,			NULL },
 };
 
