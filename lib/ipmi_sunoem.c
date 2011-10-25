@@ -148,6 +148,7 @@ ipmi_sunoem_fan_speed(struct ipmi_intf * intf, uint8_t speed)
 		return -1;
 	}
 
+	memset(&req, 0, sizeof(struct ipmi_rq));
 	req.msg.netfn = IPMI_NETFN_SUNOEM;
 	req.msg.cmd = IPMI_SUNOEM_SET_FAN_SPEED;
 	req.msg.data = &speed;
