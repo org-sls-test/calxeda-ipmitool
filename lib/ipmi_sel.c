@@ -1410,6 +1410,41 @@ ipmi_sel_print_extended_entry_verbose(struct ipmi_intf * intf, struct sel_event_
 }
 
 static int
+ipmi_sel_reserve(struct ipmi_intf * intf, uint16_t * id)
+{
+	struct ipmi_rs * rsp;
+	struct ipmi_rq req;
+	uint16_t res_id;
+
+	memset(&req, 0, sizeof(req));
+	req.msg.netfn = IPMI_NETFN_STORAGE;
+	req.msg.cmd = IPMI_CMD_RESERVE_SEL;
+
+	rsp = intf->sendrecv(intf, &req);
+	if (rsp == NULL) {
+		lprintf(LOG_WARN, "Unable to reserve SEL");
+		return -1;
+	}
+
+	if (rsp->ccode > 0) {
+		/* rsp->ccode != 0xc1 implies that sel reserve is not implemented */
+		if (rsp->ccode != 0xc1) {
+			printf("Unable to reserve SEL: %s",
+				   val2str(rsp->ccode, completion_code_vals));
+			return -1;
+		}
+		res_id = 0;
+	} else {
+		res_id = (rsp->data[0] | (rsp->data[1] << 8));
+	}
+
+	if (id != NULL)
+		*id = res_id;
+
+    return 0;
+}
+
+static int
 __ipmi_sel_savelist_entries(struct ipmi_intf * intf, int count, const char * savefile,
 							int binary)
 {
@@ -1442,20 +1477,8 @@ __ipmi_sel_savelist_entries(struct ipmi_intf * intf, int count, const char * sav
 		return 0;
 	}
 
-	memset(&req, 0, sizeof(req));
-	req.msg.netfn = IPMI_NETFN_STORAGE;
-	req.msg.cmd = IPMI_CMD_RESERVE_SEL;
-
-	rsp = intf->sendrecv(intf, &req);
-	if (rsp == NULL) {
-		lprintf(LOG_ERR, "Reserve SEL command failed");
+	if (ipmi_sel_reserve(intf, NULL) < 0)
 		return -1;
-	}
-	if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "Reserve SEL command failed: %s",
-		       val2str(rsp->ccode, completion_code_vals));
-		return -1;
-	}
 
 	if (count < 0) {
 		/** Show only the most recent 'count' records. */
@@ -1763,32 +1786,6 @@ ipmi_sel_readraw(struct ipmi_intf * intf, const char * inputfile)
 
 
 
-static uint16_t
-ipmi_sel_reserve(struct ipmi_intf * intf)
-{
-	struct ipmi_rs * rsp;
-	struct ipmi_rq req;
-
-	memset(&req, 0, sizeof(req));
-	req.msg.netfn = IPMI_NETFN_STORAGE;
-	req.msg.cmd = IPMI_CMD_RESERVE_SEL;
-
-	rsp = intf->sendrecv(intf, &req);
-	if (rsp == NULL) {
-		lprintf(LOG_WARN, "Unable to reserve SEL");
-		return 0;
-	}
-	if (rsp->ccode > 0) {
-		printf("Unable to reserve SEL: %s",
-		       val2str(rsp->ccode, completion_code_vals));
-		return 0;
-	}
-
-	return (rsp->data[0] | (rsp->data[1] << 8));
-}
-
-
-
 /*
  * ipmi_sel_get_time
  *
@@ -1933,8 +1930,7 @@ ipmi_sel_clear(struct ipmi_intf * intf)
 	uint16_t reserve_id;
 	uint8_t msg_data[6];
 
-	reserve_id = ipmi_sel_reserve(intf);
-	if (reserve_id == 0)
+	if (ipmi_sel_reserve(intf, &reserve_id) < 0)
 		return -1;
 
 	memset(msg_data, 0, 6);
@@ -1980,8 +1976,7 @@ ipmi_sel_delete(struct ipmi_intf * intf, int argc, char ** argv)
 		return -1;
 	}
 
-	id = ipmi_sel_reserve(intf);
-	if (id == 0)
+	if (ipmi_sel_reserve(intf, &id) < 0)
 		return -1;
 
 	memset(msg_data, 0, 4);
@@ -2034,7 +2029,7 @@ ipmi_sel_show_entry(struct ipmi_intf * intf, int argc, char ** argv)
 		return -1;
 	}
 
-	if (ipmi_sel_reserve(intf) == 0) {
+	if (ipmi_sel_reserve(intf, NULL) < 0) {
 		lprintf(LOG_ERR, "Unable to reserve SEL");
 		return -1;
 	}
