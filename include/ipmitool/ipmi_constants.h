@@ -114,6 +114,8 @@
 #define IPMI_CHASSIS_BOOTPARAM_INIT_INFO	6
 #define IPMI_CHASSIS_BOOTPARAM_INIT_MBOX	7
 
+#define IPMI_CHASSIS_BOOTPARAM_OEM_BOOT_POLICY	96 // Calxeda OEM boot param
+
 /* From table 13-17 of the IPMI v2 specification */
 #define IPMI_AUTH_RAKP_NONE         0x00
 #define IPMI_AUTH_RAKP_HMAC_SHA1    0x01

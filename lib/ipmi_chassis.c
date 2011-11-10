@@ -732,6 +732,12 @@ ipmi_chassis_get_bootparam(struct ipmi_intf * intf, char * arg)
          printf(" Block Data : %s\n", buf2str(rsp->data+3, rsp->data_len - 2));
       }
       break;
+      case 96:
+      {
+         printf(" Selector   : %d\n", rsp->data[1] );
+         printf(" Boot Policy : %d\n", rsp->data[2] );
+      }
+      break;
 
    
       default:
@@ -835,6 +841,86 @@ ipmi_chassis_set_bootdev(struct ipmi_intf * intf, char * arg, uint8_t *iflags)
       }
 
       printf("Set Boot Device to %s\n", arg);
+   }
+
+   if (use_progress) {
+      /* set-in-progress = set-complete */
+      memset(flags, 0, 5);
+      ipmi_chassis_set_bootparam(intf,
+            IPMI_CHASSIS_BOOTPARAM_SET_IN_PROGRESS,
+            flags, 1);
+   }
+
+   return rc;
+}
+
+static int
+ipmi_chassis_set_boot_policy(struct ipmi_intf * intf, char * arg)
+{
+   uint8_t flags[5];
+   int rc = 0;
+   int use_progress = 1;
+
+   if (use_progress) {
+      /* set set-in-progress flag */
+      memset(flags, 0, 5);
+      flags[0] = 0x01;
+      rc = ipmi_chassis_set_bootparam(intf,
+         IPMI_CHASSIS_BOOTPARAM_SET_IN_PROGRESS, flags, 1);
+      if (rc < 0)
+         use_progress = 0;
+   }
+
+   memset(flags, 0, 5);
+   flags[0] = 0x01;
+   flags[1] = 0x01;
+   rc = ipmi_chassis_set_bootparam(intf, IPMI_CHASSIS_BOOTPARAM_INFO_ACK,
+               flags, 2);
+
+   if (rc < 0) {
+      if (use_progress) {
+         /* set-in-progress = set-complete */
+         memset(flags, 0, 5);
+         ipmi_chassis_set_bootparam(intf,
+               IPMI_CHASSIS_BOOTPARAM_SET_IN_PROGRESS,
+               flags, 1);
+      }
+      return -1;
+   }
+
+   memset(flags, 0, 5);
+
+   if (strncmp(arg, "0", 1) == 0)
+      flags[0] = 0;
+   else if (strncmp(arg, "1", 1) == 0)
+      flags[0] = 1;
+   else if (strncmp(arg, "2", 1) == 0)
+      flags[0] = 2;
+   else {
+      lprintf(LOG_ERR, "Invalid argument: %s", arg);
+      if (use_progress) {
+         /* set-in-progress = set-complete */
+         memset(flags, 0, 5);
+         ipmi_chassis_set_bootparam(intf,
+               IPMI_CHASSIS_BOOTPARAM_SET_IN_PROGRESS,
+               flags, 1);
+      }
+      return -1;
+   }
+
+   rc = ipmi_chassis_set_bootparam(intf, IPMI_CHASSIS_BOOTPARAM_OEM_BOOT_POLICY,
+               flags, 1);
+   if (rc == 0) {
+      if (use_progress) {
+         /* set-in-progress = commit-write */
+         memset(flags, 0, 5);
+         flags[0] = 0x02;
+         ipmi_chassis_set_bootparam(intf,
+               IPMI_CHASSIS_BOOTPARAM_SET_IN_PROGRESS,
+               flags, 1);
+      }
+
+      printf("Set Boot Policy to %s\n", arg);
    }
 
    if (use_progress) {
@@ -1032,6 +1118,10 @@ ipmi_chassis_main(struct ipmi_intf * intf, int argc, char ** argv)
          lprintf(LOG_NOTICE, "  force_diag  : Force boot from Diagnostic Partition");
          lprintf(LOG_NOTICE, "  force_cdrom : Force boot from CD/DVD");
          lprintf(LOG_NOTICE, "  force_bios  : Force boot into BIOS Setup");
+         lprintf(LOG_NOTICE, "bootparam set policy <value>");
+         lprintf(LOG_NOTICE, "          0   : Boot ASAP");
+         lprintf(LOG_NOTICE, "          1   : Boot when Fabric is ready");
+         lprintf(LOG_NOTICE, "          2   : Boot after a fixed delay");
       }
       else {
          if (strncmp(argv[1], "get", 3) == 0) {
@@ -1043,6 +1133,8 @@ ipmi_chassis_main(struct ipmi_intf * intf, int argc, char ** argv)
             } else {
                if (strncmp(argv[2], "bootflag", 8) == 0)
                   rc = ipmi_chassis_set_bootdev(intf, argv[3], NULL);
+               else if (strncmp(argv[2], "policy", 6) == 0)
+                  rc = ipmi_chassis_set_boot_policy(intf, argv[3]);
                else
                   lprintf(LOG_NOTICE, "bootparam set <option> [value ...]");
             }
