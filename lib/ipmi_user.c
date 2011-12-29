@@ -721,6 +721,11 @@ ipmi_user_main(struct ipmi_intf * intf, int argc, char ** argv)
 				return -1;
 			}
 
+			if (strlen(argv[3]) > 15) {
+				lprintf(LOG_ERR, "Name is too long (> 15 bytes)");
+				return -1;
+			}
+
 			retval = ipmi_user_set_username(intf,
 							(uint8_t)strtol(argv[2],
 									NULL,
