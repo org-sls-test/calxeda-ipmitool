@@ -1860,6 +1860,10 @@ ipmi_sel_set_time(struct ipmi_intf * intf, const char * time_string)
 	/* See if user requested set to current client system time */
 	if (strncasecmp(time_string, "now", 3) == 0) {
 		t = time(NULL);
+
+		/* Adjust for local time */
+		tzset();
+		t -= timezone;
 	}
 	else {
 		/* Now how do we get our time_t from our ascii version? */
@@ -1867,33 +1871,23 @@ ipmi_sel_set_time(struct ipmi_intf * intf, const char * time_string)
 			lprintf(LOG_ERR, "Specified time could not be parsed");
 			return -1;
 		}
+
+		/* Set TZ=UTC so mktime doesn't adjust the time */
+		char *prev_tz = getenv("TZ");
+		setenv("TZ", "UTC", 1);
+
 		t = mktime(&tm);
+
+		/* Reset TZ to its previous value */
+		if (prev_tz == NULL)
+			unsetenv("TZ");
+		else
+			setenv("TZ", prev_tz, 1);
+
 		if (t < 0) {
 			lprintf(LOG_ERR, "Specified time could not be parsed");
 			return -1;
 		}
-	}
-
-	{
-		//modify UTC time to local time expressed in number of seconds from 1/1/70 0:0:0 1970 GMT
-		struct tm * tm_tmp;
-		int gt_year,gt_yday,gt_hour,lt_year,lt_yday,lt_hour;
-		int delta_hour;
-		tm_tmp=gmtime(&t);
-		gt_year=tm_tmp->tm_year;
-		gt_yday=tm_tmp->tm_yday;
-		gt_hour=tm_tmp->tm_hour;
-		tm_tmp=localtime(&t);
-		lt_year=tm_tmp->tm_year;
-		lt_yday=tm_tmp->tm_yday;
-		lt_hour=tm_tmp->tm_hour;
-		delta_hour=lt_hour - gt_hour;
-		if ( (lt_year > gt_year) || ((lt_year == gt_year) && (lt_yday > gt_yday)) )
-			delta_hour += 24;
-		if ( (lt_year < gt_year) || ((lt_year == gt_year) && (lt_yday < gt_yday)) )
-			delta_hour -= 24;
-
-		t += (delta_hour * 60 * 60);
 	}
 
 	timei = (uint32_t)t;
