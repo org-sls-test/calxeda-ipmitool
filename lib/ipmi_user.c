@@ -322,7 +322,7 @@ ipmi_user_set_username(
 	/* The channel number will remain constant throughout this function */
 	msg_data[0] = user_id;
 	memset(msg_data + 1, 0, 16);
-	strcpy((char *)(msg_data + 1), name);
+	strncpy((char *)(msg_data + 1), name, 16);
 
 	rsp = intf->sendrecv(intf, &req);
 
@@ -721,8 +721,8 @@ ipmi_user_main(struct ipmi_intf * intf, int argc, char ** argv)
 				return -1;
 			}
 
-			if (strlen(argv[3]) > 15) {
-				lprintf(LOG_ERR, "Name is too long (> 15 bytes)");
+			if (strlen(argv[3]) > 16) {
+				lprintf(LOG_ERR, "Name is too long (> 16 bytes)");
 				return -1;
 			}
 
