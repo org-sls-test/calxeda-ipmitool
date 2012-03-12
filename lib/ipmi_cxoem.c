@@ -112,8 +112,9 @@ cx_fabric_usage(void)
 	"Fabric Commands: \n"
 	"\n"
 	"  set|get  <parameter> <value> \n"
-	"     where  \n"
-	"  parameter = node, adaptive, jumbo \n"
+	"     where parameter = node, adaptive, jumbo \n"
+	"  config   <cmd> <tftp ip[:port]> [id <id>] [file <filename>]\n"
+	"     where cmd = put, get, commit, status, describe\n"
 	"\n");
 }
 
@@ -974,6 +975,179 @@ cx_fabric_param(struct ipmi_intf *intf, int direction,
 	return rc;
 }
 
+int
+cx_fabric_cmd(struct ipmi_intf *intf, char *filename, int cmd, int id, 
+              int ip1, int ip2, int ip3, int ip4, int port)
+{
+	int    rc = CXOEM_SUCCESS;
+	struct ipmi_rs * rsp;
+	struct ipmi_rq   req;
+	uint8_t msg_data[60];
+
+	memset(&req, 0, sizeof(req));
+	memset(msg_data, 0, sizeof(msg_data));
+
+	req.msg.netfn    = IPMI_NETFN_CXOEM;
+	req.msg.cmd      = IPMI_CXOEM_FABRIC_ACCESS;
+	msg_data[0] = cmd;
+	msg_data[1] = id;
+	msg_data[2] = 6; // ipv4 addresses by default (for now)
+	msg_data[3] = ip1;
+	msg_data[4] = ip2;
+	msg_data[5] = ip3;
+	msg_data[6] = ip4;
+	msg_data[7] = (port & 0xff);
+	msg_data[8] = (port >> 8) & 0xff;
+	msg_data[9] = strlen(filename) + 1;
+	memcpy(&msg_data[10], filename, msg_data[9]);
+	req.msg.data = msg_data;
+	req.msg.data_len = msg_data[9] + 10;
+
+	rsp = intf->sendrecv(intf, &req);
+
+	if (rsp->ccode > 0) {
+		lprintf(LOG_ERR, "Fabric access command failed: %s",
+					val2str(rsp->ccode, completion_code_vals));
+		return -1;
+	}
+
+	return rc;
+}
+
+int
+cx_fabric_access(struct ipmi_intf * intf, int argc, char ** argv)
+{
+	char filename[40];
+	int rv = 0;
+	int cmd = 0, id = -1;
+	int ip1 = 0, ip2 = 0, ip3 = 0, ip4 = 0;
+	int port = 0;
+	int expect_file = 0;
+	int expect_id = 0;
+	int i;
+
+	errno = 0;
+
+	if (argc < 3 || strncmp(argv[0], "help", 4) == 0) {
+		cx_fabric_usage();
+		return 0;
+	}
+
+	memset(filename, 0, sizeof(filename));
+
+	if (strncmp(argv[0], "put", 3) == 0) {
+		cmd = 2;
+		expect_file = 1;
+		expect_id = 0;
+	}
+	else if (strncmp(argv[0], "get", 3) == 0) {
+		cmd = 1;
+		expect_file = 1;
+		expect_id = 1;
+	}
+	else if (strncmp(argv[0], "commit", 6) == 0) {
+		cmd = 4;
+		expect_file = 0;
+		expect_id = 0;
+	}
+	else if (strncmp(argv[0], "status", 6) == 0) {
+		cmd = 3;
+		expect_file = 0;
+		expect_id = 1;
+	}
+	else if (strncmp(argv[0], "describe", 8) == 0) {
+		cmd = 5;
+		expect_file = 1;
+		expect_id = 0;
+	}
+	else {
+		fprintf(stderr,"<cmd> invalid\n");
+		return -1;
+	}
+
+	if (strncmp(argv[1], "tftp", 4) == 0) {
+		if (strchr(argv[2], ':')) {
+			if (sscanf(argv[2], "%d.%d.%d.%d:%d", 
+					&ip1, &ip2, &ip3, &ip4, &port) != 5) {
+				lprintf(LOG_ERR, "Invalid IP address: %s", argv[2]);
+				return -1;
+			}
+			printf("IP = %d.%d.%d.%d:%d\n", ip1, ip2, ip3, ip4, port);
+		} else {
+			if (sscanf(argv[2], "%d.%d.%d.%d", 
+					&ip1, &ip2, &ip3, &ip4) != 4) {
+				lprintf(LOG_ERR, "Invalid IP address: %s", argv[2]);
+				return -1;
+			}
+			printf("IP = %d.%d.%d.%d\n", ip1, ip2, ip3, ip4);
+		}
+	}
+	else {
+		cx_fabric_usage();
+		return -1;
+	}
+
+	/*
+	 * At this point, argv[0] thru argv[2] have been handled. 
+	 * The <id> and <file> args are optional
+	 * Cheap and dirty algorithm follows...
+	 * 1. Make sure the number of remaining args is consistent with
+	 *    expectations
+	 * 2. Check for <id> and/or <file> and parse accordingly
+	 */
+
+	if ((expect_id || expect_file) && (argc != 5) && (argc != 7)) {
+		printf("Missing <id> and/or <file> args\n");
+		return -1;
+	}
+
+	i = 3;
+	while (i < argc) {
+		if (strncmp(argv[i], "file", 4) == 0) {
+			i++;
+			if(strlen(argv[i]) < 32)
+			{
+			   strcpy((char *)filename, argv[i]);
+			   printf("File Name         : %s\n", filename);
+			}
+			else
+			{
+			   fprintf(stderr,"File name must be less than 32 bytes\n");
+			   return -1;
+			}
+		}
+		else if (strncmp(argv[i], "id", 2) == 0) {
+			i++;
+			if (isdigit(argv[i][0])) {
+				id = strtol(argv[i], (char **)NULL, 10);
+			}
+			if (!errno) {
+				printf("Id    : %d\n", id);
+			}
+			else {
+				fprintf(stderr,"<id> doesn't look like a valid value\n");
+				return -1;
+			}
+		}
+		i++;
+	}
+
+	if (expect_file && !strlen(filename)) {
+		fprintf(stderr, "No valid filename was entered\n");
+		return -1;
+	}
+
+	if (expect_id && (id == -1)) {
+		fprintf(stderr, "No valid <id> was entered\n");
+		return -1;
+	}
+
+	cx_fabric_cmd(intf, filename, cmd, id, ip1, ip2, ip3, ip4, port);
+
+	return 0;
+
+}
+
 
 int
 cx_fabric_main(struct ipmi_intf * intf, int argc, char ** argv)
@@ -990,12 +1164,15 @@ cx_fabric_main(struct ipmi_intf * intf, int argc, char ** argv)
 		return 0;
 	}
 
-	if (strncmp(argv[0], "get", 3) == 0) {
+	if (strncmp(argv[0], "config", 6) == 0) {
+		cx_fabric_access(intf, argc-1, &argv[1]);
+		return 0;
+	}
+	else if (strncmp(argv[0], "get", 3) == 0) {
 		direction = 0;
 	} else if (strncmp(argv[0], "set", 3) == 0) {
 		direction = 1;
-	}
-	else {
+	} else {
 		cx_fabric_usage();
 		return 0;
 	}

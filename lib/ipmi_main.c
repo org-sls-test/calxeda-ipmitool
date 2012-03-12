@@ -393,7 +393,7 @@ ipmi_main(int argc, char ** argv,
 			break;
 		case 'V':
 			printf("%s version %s\n", progname, VERSION);
-			printf("   Calxeda, Inc., 0.0.0\n");
+			printf("   Calxeda, Inc., 0.0.1\n");
 			rc = 0;
 			goto out_free;
 			break;

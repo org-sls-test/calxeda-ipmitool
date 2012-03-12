@@ -51,6 +51,7 @@
 #define IPMI_CXOEM_FABRIC_GET_PARAM 0xE4
 #define IPMI_CXOEM_FABRIC_SET_PARAM 0xE5
 #define IPMI_CXOEM_DATA_ACCESS      0xE6
+#define IPMI_CXOEM_FABRIC_ACCESS    0xE7
 
 /*
  * CX-defined constants
