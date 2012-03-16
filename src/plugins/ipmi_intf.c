@@ -197,7 +197,15 @@ ipmi_intf_session_set_password(struct ipmi_intf * intf, char * password)
 	if (intf->session == NULL)
 		return;
 
-	memset(intf->session->authcode, 0, IPMI_AUTHCODE_BUFFER_SIZE);
+	intf->session->oldpassword = intf->session->password;
+	if (intf->session->oldpassword)
+	{
+		memset(intf->session->oldauthcode, 0, IPMI_AUTHCODE_BUFFER_SIZE+1);
+		memcpy(intf->session->oldauthcode, intf->session->authcode,
+			   IPMI_AUTHCODE_BUFFER_SIZE);
+	}
+
+	memset(intf->session->authcode, 0, IPMI_AUTHCODE_BUFFER_SIZE+1);
 
 	if (password == NULL) {
 		intf->session->password = 0;

@@ -65,6 +65,7 @@ enum LANPLUS_SESSION_STATE {
 struct ipmi_session {
 	uint8_t hostname[64];
 	uint8_t username[17];
+	uint8_t oldauthcode[IPMI_AUTHCODE_BUFFER_SIZE + 1];
 	uint8_t authcode[IPMI_AUTHCODE_BUFFER_SIZE + 1];
 	uint8_t challenge[16];
 	uint8_t authtype;
@@ -79,6 +80,7 @@ struct ipmi_session {
 	uint8_t privlvl;
 	uint8_t cipher_suite_id;
 	char sol_escape_char;
+	int oldpassword;
 	int password;
 	int port;
 	int active;

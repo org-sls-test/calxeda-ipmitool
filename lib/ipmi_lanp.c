@@ -927,6 +927,27 @@ ipmi_lan_set_password(struct ipmi_intf * intf,
 	struct ipmi_rs * rsp;
 	struct ipmi_rq req;
 	uint8_t data[18];
+	char user_name[17];
+	uint8_t set_session_pw = 0;
+
+	memset(&data, 0, sizeof(data));
+	memset(&req, 0, sizeof(req));
+	req.msg.netfn = IPMI_NETFN_APP;
+	req.msg.cmd = IPMI_GET_USER_NAME;
+	req.msg.data = data;
+	req.msg.data_len = 1;
+
+	data[0] = userid & 0x3f;
+
+	rsp = intf->sendrecv(intf, &req);
+
+	if(rsp != NULL && rsp->ccode == 0)
+	{
+		if(strncmp(rsp->data, intf->session->username, 16) == 0)
+		{
+			set_session_pw = 1;
+		}
+	}
 
 	memset(&data, 0, sizeof(data));
 	data[0] = userid & 0x3f;/* user ID */
@@ -936,8 +957,8 @@ ipmi_lan_set_password(struct ipmi_intf * intf,
 		memcpy(data+2, password, __min(strlen((const char *)password), 16));
 
 	memset(&req, 0, sizeof(req));
-	req.msg.netfn = IPMI_NETFN_APP;
-	req.msg.cmd = 0x47;
+	req.msg.netfn = IPMI_NETFN_APP;	/* 0x06 */
+	req.msg.cmd = IPMI_SET_USER_PASSWORD; /* 0x47 */
 	req.msg.data = data;
 	req.msg.data_len = 18;
 
@@ -955,7 +976,12 @@ ipmi_lan_set_password(struct ipmi_intf * intf,
 	/* adjust our session password
 	 * or we will no longer be able to communicate with BMC
 	 */
-	ipmi_intf_session_set_password(intf, (char *)password);
+	if(set_session_pw)
+	{
+		ipmi_intf_session_set_password(intf, (char *)password);
+	}
+
+
 	printf("Password %s for user %d\n",
 	       (password == NULL) ? "cleared" : "set", userid);
 

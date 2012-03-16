@@ -400,6 +400,13 @@ ipmi_user_set_password(
 	struct ipmi_rs	     * rsp;
 	struct ipmi_rq	       req;
 	uint8_t	             * msg_data;
+	uint8_t                name[17];
+
+	if (operation == IPMI_PASSWORD_SET_PASSWORD)
+	{
+		memset(name, 0, 17);
+		ipmi_get_user_name(intf, user_id, name);
+	}
 
 	int password_length = (is_twenty_byte_password? 20 : 16);
 
@@ -437,6 +444,12 @@ ipmi_user_set_password(
 		lprintf(LOG_ERR, "Set User Password command failed (user %d): %s",
 			user_id, val2str(rsp->ccode, completion_code_vals));
 		return rsp->ccode;
+	}
+
+	if (operation == IPMI_PASSWORD_SET_PASSWORD &&
+		strncmp(name, intf->session->username, 16) == 0)
+	{
+		ipmi_intf_session_set_password(intf, password);
 	}
 
 	return 0;

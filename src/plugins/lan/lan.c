@@ -1802,6 +1802,7 @@ ipmi_close_session_cmd(struct ipmi_intf * intf)
 	struct ipmi_rq req;
 	uint8_t msg_data[4];
 	uint32_t session_id = intf->session->session_id;
+	uint8_t tmp_password[IPMI_AUTHCODE_BUFFER_SIZE+1];
 
 	if (intf->session->active == 0)
 		return -1;
@@ -1818,10 +1819,12 @@ ipmi_close_session_cmd(struct ipmi_intf * intf)
 	req.msg.data_len	= 4;
 
 	rsp = intf->sendrecv(intf, &req);
+
 	if (rsp == NULL) {
 		lprintf(LOG_ERR, "Close Session command failed");
 		return -1;
 	}
+
 	if (verbose > 2)
 		printbuf(rsp->data, rsp->data_len, "close_session");
 
@@ -1830,6 +1833,18 @@ ipmi_close_session_cmd(struct ipmi_intf * intf)
 			"session ID %08lx", (long)session_id);
 		return -1;
 	}
+
+	if (rsp->ccode == 0xce) {
+		if(intf->session->oldpassword){
+			memset(tmp_password, 0, IPMI_AUTHCODE_BUFFER_SIZE+1);
+			strncpy(tmp_password, (char *)intf->session->oldauthcode,
+					IPMI_AUTHCODE_BUFFER_SIZE);
+			ipmi_intf_session_set_password(intf,
+					(char *)tmp_password);
+			rsp = intf->sendrecv(intf, &req);
+		}
+	}
+
 	if (rsp->ccode > 0) {
 		lprintf(LOG_ERR, "Close Session command failed: %s",
 			val2str(rsp->ccode, completion_code_vals));
