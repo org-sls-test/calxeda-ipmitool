@@ -52,7 +52,7 @@ ipmi_chassis_power_status(struct ipmi_intf * intf)
 
    memset(&req, 0, sizeof(req));
    req.msg.netfn = IPMI_NETFN_CHASSIS;
-   req.msg.cmd = 0x1;
+   req.msg.cmd = GET_CHASSIS_STATUS;
    req.msg.data_len = 0;
 
    rsp = intf->sendrecv(intf, &req);
@@ -90,7 +90,7 @@ ipmi_chassis_power_control(struct ipmi_intf * intf, uint8_t ctl)
 
    memset(&req, 0, sizeof(req));
    req.msg.netfn = IPMI_NETFN_CHASSIS;
-   req.msg.cmd = 0x2;
+   req.msg.cmd = CHASSIS_CONTROL;
    req.msg.data = &ctl;
    req.msg.data_len = 1;
 
@@ -131,7 +131,7 @@ ipmi_chassis_identify(struct ipmi_intf * intf, char * arg)
 
    memset(&req, 0, sizeof(req));
    req.msg.netfn = IPMI_NETFN_CHASSIS;
-   req.msg.cmd = 0x4;
+   req.msg.cmd = CHASSIS_IDENTIFY;
 
    if (arg != NULL) {
       if (strncmp(arg, "force", 5) == 0) {
@@ -196,7 +196,7 @@ ipmi_chassis_poh(struct ipmi_intf * intf)
 
    memset(&req, 0, sizeof(req));
    req.msg.netfn = IPMI_NETFN_CHASSIS;
-   req.msg.cmd = 0xf;
+   req.msg.cmd = GET_POH_COUNTER;
 
    rsp = intf->sendrecv(intf, &req);
    if (rsp == NULL) {
@@ -239,7 +239,7 @@ ipmi_chassis_restart_cause(struct ipmi_intf * intf)
 
    memset(&req, 0, sizeof(req));
    req.msg.netfn = IPMI_NETFN_CHASSIS;
-   req.msg.cmd = 0x7;
+   req.msg.cmd = GET_SYSTEM_RESTART_CAUSE;
 
    rsp = intf->sendrecv(intf, &req);
    if (rsp == NULL) {
@@ -300,7 +300,7 @@ ipmi_chassis_status(struct ipmi_intf * intf)
 
    memset(&req, 0, sizeof(req));
    req.msg.netfn = IPMI_NETFN_CHASSIS;
-   req.msg.cmd = 0x1;
+   req.msg.cmd = GET_CHASSIS_STATUS;
 
    rsp = intf->sendrecv(intf, &req);
    if (rsp == NULL) {
@@ -456,7 +456,7 @@ ipmi_chassis_set_bootparam(struct ipmi_intf * intf, uint8_t param, uint8_t * dat
 
    memset(&req, 0, sizeof(req));
    req.msg.netfn = IPMI_NETFN_CHASSIS;
-   req.msg.cmd = 0x8;
+   req.msg.cmd = SET_SYSTEM_BOOT_OPTIONS;
    req.msg.data = msg_data;
    req.msg.data_len = len + 1;
 
@@ -496,7 +496,7 @@ ipmi_chassis_get_bootparam(struct ipmi_intf * intf, char * arg)
 
    memset(&req, 0, sizeof(req));
    req.msg.netfn = IPMI_NETFN_CHASSIS;
-   req.msg.cmd = 0x9;
+   req.msg.cmd = GET_SYSTEM_BOOT_OPTIONS;
    req.msg.data = msg_data;
    req.msg.data_len = 3;
 
@@ -942,7 +942,7 @@ ipmi_chassis_power_policy(struct ipmi_intf * intf, uint8_t policy)
 
    memset(&req, 0, sizeof(req));
    req.msg.netfn = IPMI_NETFN_CHASSIS;
-   req.msg.cmd = 0x6;
+   req.msg.cmd = SET_POWER_RESTORE_POLICY;
    req.msg.data = &policy;
    req.msg.data_len = 1;
 
