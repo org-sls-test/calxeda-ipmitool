@@ -770,6 +770,67 @@ ipmi_lan_print(struct ipmi_intf * intf, uint8_t chan)
 		printf("%-24s: %d\n", p->desc, *port);
 	}
 
+	p = get_lan_param(intf, chan, IPMI_LANP_OEM_MAC0);
+	if (p == NULL)
+		return -1;
+	if (p->data != NULL)
+		printf("%-24s: %02x:%02x:%02x:%02x:%02x:%02x\n", p->desc,
+		       p->data[0], p->data[1], p->data[2], p->data[3], p->data[4], p->data[5]);
+
+	p = get_lan_param(intf, chan, IPMI_LANP_OEM_MAC1);
+	if (p == NULL)
+		return -1;
+	if (p->data != NULL)
+		printf("%-24s: %02x:%02x:%02x:%02x:%02x:%02x\n", p->desc,
+		       p->data[0], p->data[1], p->data[2], p->data[3], p->data[4], p->data[5]);
+
+	p = get_lan_param(intf, chan, IPMI_LANP_OEM_MAC2);
+	if (p == NULL)
+		return -1;
+	if (p->data != NULL)
+		printf("%-24s: %02x:%02x:%02x:%02x:%02x:%02x\n", p->desc,
+		       p->data[0], p->data[1], p->data[2], p->data[3], p->data[4], p->data[5]);
+
+	p = get_lan_param(intf, chan, IPMI_LANP_OEM_OUID);
+	if (p == NULL)
+		return -1;
+	if (p->data != NULL)
+		printf("%-24s: %02x:%02x:%02x\n", p->desc,
+		       p->data[0], p->data[1], p->data[2]);
+
+	p = get_lan_param(intf, chan, IPMI_LANP_SC_OUID);
+	if (p == NULL)
+		return -1;
+	if (p->data != NULL)
+		printf("%-24s: %02x:%02x:%02x\n", p->desc,
+		       p->data[0], p->data[1], p->data[2]);
+
+	p = get_lan_param(intf, chan, IPMI_LANP_SC_MODE);
+	if (p == NULL)
+		return -1;
+	if (p->data != NULL) {
+		printf("%-24s: ", p->desc);
+		p->data[0] &= 0xf;
+		switch (p->data[0]) {
+		case 0:
+			printf("Zero\n");
+			break;
+		case 1:
+			printf("One\n");
+			break;
+		default:
+			printf("Other\n");
+			break;
+		}
+	}
+
+	p = get_lan_param(intf, chan, IPMI_LANP_SC_FID);
+	if (p == NULL)
+		return -1;
+	if (p->data != NULL) {
+		printf("%-24s: %02X\n", p->desc, p->data[0]);
+	}
+
 	p = get_lan_param(intf, chan, IPMI_LANP_VLAN_ID);
 	if (p != NULL && p->data != NULL) {
 		int id = ((p->data[1] & 0x0f) << 8) + p->data[0];
@@ -1222,6 +1283,21 @@ get_cmdline_macaddr(char * arg, uint8_t * buf)
 	return 0;
 }
 
+
+static int
+get_cmdline_ouiaddr(char * arg, uint8_t * buf)
+{
+	uint32_t m1, m2, m3;
+	if (sscanf(arg, "%02x:%02x:%02x",
+		   &m1, &m2, &m3) != 3) {
+		lprintf(LOG_ERR, "Invalid OUI address: %s", arg);
+		return -1;
+	}
+	buf[0] = (uint8_t)m1;
+	buf[1] = (uint8_t)m2;
+	buf[2] = (uint8_t)m3;
+	return 0;
+}
 
 static int
 get_cmdline_cipher_suite_priv_data(char * arg, uint8_t * buf)
@@ -1764,6 +1840,112 @@ ipmi_lan_set(struct ipmi_intf * intf, int argc, char ** argv)
 			return -1;
 		}
 	}		
+	else if (strncmp(argv[1], "oem_mac0", 8) == 0) {
+		if(argc != 3)
+		{
+			ipmi_lan_set_usage();
+			return -1;
+		}
+		rc = get_cmdline_macaddr(argv[2], data);
+		if (rc == 0) {
+			printf("Setting LAN %s to %02x:%02x:%02x:%02x:%02x:%02x\n",
+		       		ipmi_lan_params[IPMI_LANP_OEM_MAC0].desc,
+		       		data[0], data[1], data[2], data[3], data[4], data[5]);
+			rc = set_lan_param(intf, chan, IPMI_LANP_OEM_MAC0, data, 6);
+		}
+	}
+	else if (strncmp(argv[1], "oem_mac1", 8) == 0) {
+		if(argc != 3)
+		{
+			ipmi_lan_set_usage();
+			return -1;
+		}
+		rc = get_cmdline_macaddr(argv[2], data);
+		if (rc == 0) {
+			printf("Setting LAN %s to %02x:%02x:%02x:%02x:%02x:%02x\n",
+		       		ipmi_lan_params[IPMI_LANP_OEM_MAC1].desc,
+		       		data[0], data[1], data[2], data[3], data[4], data[5]);
+			rc = set_lan_param(intf, chan, IPMI_LANP_OEM_MAC1, data, 6);
+		}
+	}
+	else if (strncmp(argv[1], "oem_mac2", 8) == 0) {
+		if(argc != 3)
+		{
+			ipmi_lan_set_usage();
+			return -1;
+		}
+		rc = get_cmdline_macaddr(argv[2], data);
+		if (rc == 0) {
+			printf("Setting LAN %s to %02x:%02x:%02x:%02x:%02x:%02x\n",
+		       		ipmi_lan_params[IPMI_LANP_OEM_MAC2].desc,
+		       		data[0], data[1], data[2], data[3], data[4], data[5]);
+			rc = set_lan_param(intf, chan, IPMI_LANP_OEM_MAC2, data, 6);
+		}
+	}
+	else if (strncmp(argv[1], "oem_ouid", 8) == 0) {
+		if(argc != 3)
+		{
+			ipmi_lan_set_usage();
+			return -1;
+		}
+		rc = get_cmdline_ouiaddr(argv[2], data);
+		if (rc == 0) {
+			printf("Setting LAN %s to %02x:%02x:%02x\n",
+		       		ipmi_lan_params[IPMI_LANP_OEM_OUID].desc,
+		       		data[0], data[1], data[2]);
+			rc = set_lan_param(intf, chan, IPMI_LANP_OEM_OUID, data, 3);
+		}
+	}
+	else if (strncmp(argv[1], "sc_ouid", 7) == 0) {
+		if(argc != 3)
+		{
+			ipmi_lan_set_usage();
+			return -1;
+		}
+		rc = get_cmdline_ouiaddr(argv[2], data);
+		if (rc == 0) {
+			printf("Setting LAN %s to %02x:%02x:%02x\n",
+		       		ipmi_lan_params[IPMI_LANP_SC_OUID].desc,
+		       		data[0], data[1], data[2]);
+			rc = set_lan_param(intf, chan, IPMI_LANP_SC_OUID, data, 3);
+		}
+	}
+	else if (strncmp(argv[1], "sc_mode", 7) == 0) {
+		if (argc < 3 || (strncmp(argv[2], "help", 4) == 0)) {
+			lprintf(LOG_NOTICE,
+				"lan set <channel> sc_mode <mode>\n"
+				"  off = zero\n"
+				"  on  = one\n");
+			return 0;
+		}
+		else if (strncmp(argv[2], "off", 3) == 0)
+			data[0] = 0;
+		else if (strncmp(argv[2], "on", 2) == 0)
+			data[0] = 1;
+		else {
+			lprintf(LOG_NOTICE,
+				"lan set <channel> sc_mode <mode>\n"
+				"  off = zero\n"
+				"  on  = one\n");
+			return -1;
+		}
+			printf("Setting LAN %s to %02x\n",
+		       		ipmi_lan_params[IPMI_LANP_SC_OUID].desc,
+		       		data[0]);
+		rc = set_lan_param(intf, chan, IPMI_LANP_SC_MODE, data, 1);
+	}
+	else if (strncasecmp(argv[1], "sc_fid", 6) == 0) {
+		if (argc < 3 || (strncmp(argv[2], "help", 4) == 0)) {
+			lprintf(LOG_NOTICE,
+				"lan set <channel> sc_fid <fid>\n");
+			return 0;
+		}
+		data[0] = (uint8_t)strtol(argv[2], NULL, 0);
+		printf("Setting LAN %s to %02x\n",
+		       	ipmi_lan_params[IPMI_LANP_SC_OUID].desc,
+		       	data[0]);
+		rc = set_lan_param(intf, chan, IPMI_LANP_SC_FID, data, 1);
+	}
 	else {
 		ipmi_lan_set_usage();
 	}
@@ -1892,6 +2074,13 @@ ipmi_lan_alert_set_usage(void)
 	lprintf(LOG_NOTICE, "    type <pet|oem1|oem2>           Set destination type as PET or OEM");
 	lprintf(LOG_NOTICE, "    time <seconds>                 Set ack timeout or unack retry interval");
 	lprintf(LOG_NOTICE, "    retry <number>                 Set number of alert retries");
+	lprintf(LOG_NOTICE, "    oem_mac0 <x:x:x:x:x:x>         Set OEM MAC address");
+	lprintf(LOG_NOTICE, "    oem_mac1 <x:x:x:x:x:x>         Set OEM MAC address");
+	lprintf(LOG_NOTICE, "    oem_mac2 <x:x:x:x:x:x>         Set OEM MAC address");
+	lprintf(LOG_NOTICE, "    oem_ouid <x:x:x>               Set OEM OUID address");
+	lprintf(LOG_NOTICE, "    sc_ouid <x:x:x>                Set Supercluster OUID address");
+	lprintf(LOG_NOTICE, "    sc_mode <on|off>               Set Supercluster mode");
+	lprintf(LOG_NOTICE, "    sc_fid  <fid>                  Set Supercluster FID");
 	lprintf(LOG_NOTICE, "");
 }
 

@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <ctype.h>
+#include <time.h>
 
 #include <ipmitool/ipmi.h>
 #include <ipmitool/ipmi_intf.h>
@@ -42,6 +43,36 @@
 #include <ipmitool/ipmi_cxoem.h>
 #include <ipmitool/ipmi_raw.h>
 
+/* cxoem data targets -- i.e. the kinds of data we can read and write
+ */
+#define CX_DATA_TARGET_MEM 1
+#define CX_DATA_TARGET_CDB 2
+#define CX_DATA_TARGET_UNKNOWN 0
+/* Maximum amount of data that can be read from or written to the configuration
+   data base
+*/
+#define MAX_RETURNABLE_CDB_LEN 64
+/* Kinds of access to cxoem data supported
+ */
+#define CX_DATA_ACCESS_READ 1
+#define CX_DATA_ACCESS_WRITE 2
+#define CX_DATA_ACCESS_UNKNOWN 0
+/* Supported cxoem data formatting hints
+ */
+#define CX_DATA_FMT_DEFAULT 0
+#define CX_DATA_FMT_INT 1
+#define CX_DATA_FMT_UINT 2
+#define CX_DATA_FMT_XINT 3
+#define CX_DATA_FMT_ASCII 4
+#define CX_DATA_FMT_XSTR 5
+#define CX_DATA_INT_TYPE 1
+#define CX_DATA_BYTE_TYPE 2
+/* cxoem internal return codes
+ */
+#define CX_DATA_BAD_VALUE -1
+#define CX_DATA_BAD_LENGTH -2
+#define CX_DATA_OK 0
+
 const struct valstr cx_ptypes[] = {
 	{ 0x00, "DEL"      },
 	{ 0x01, "DEL1"     },
@@ -49,15 +80,16 @@ const struct valstr cx_ptypes[] = {
 	{ 0x03, "SOC_ELF"  },
 	{ 0x04, "A9_UEFI"  },
 	{ 0x05, "A9_UBOOT" },
-	{ 0x06, "A9_ELF"   },
-	{ 0x07, "A9_EXEC"  },
+	{ 0x06, "A9_EXEC"  },
+	{ 0x07, "A9_ELF"   },
 	{ 0x08, "SOCDATA"  },
 	{ 0x09, "DTB"      },
 	{ 0x0a, "CDB"      },
 	{ 0x0b, "UBOOTENV" },
 	{ 0x0c, "SEL"      },
-	{ 0x0d, "TOPOBLOB" },
+	{ 0x0d, "BOOT_LOG" },
 	{ 0x0e, "UEFI_ENV" },
+	{ 0x0f, "DIAG_ELF" },
 };
 
 const struct valstr cx_tftp_status[] = {
@@ -76,7 +108,7 @@ ipmi_cxoem_usage(void)
 	"\n"
 	"Commands: \n"
 	"\n"
-	"  fw fabric mac log data\n");
+	"  fw fabric mac log data info\n");
 }
 
 static void
@@ -92,6 +124,7 @@ cx_fw_usage(void)
 	"  upload     <slot> <filename> <type> <tftp ip[:port]>\n"
 	"  activate   <slot>\n"
 	"  invalidate <slot>\n"
+        "  makenext   <slot>\n"
 	"  flags       <slot> <flags> \n"
 	"  status     <job id>      - returns status of the transfer by <job id>\n"
 	"  check      <slot>        - force a crc check\n"
@@ -99,6 +132,7 @@ cx_fw_usage(void)
 	"  info       \n"      
 	"  get        <filename> <offset> <size> <tftp ip[:port]>\n"
 	"  put        <filename> <offset> <size> <tftp ip[:port]>\n"
+	"  reset      Reset to factory default\n"
 	"\n");
 }
 
@@ -111,13 +145,32 @@ cx_fabric_usage(void)
 	"\n"
 	"Fabric Commands: \n"
 	"\n"
-	"  set|get  <parameter> <value> \n"
-	"     where parameter = node, adaptive, jumbo \n"
-	"  config   <cmd> <tftp ip[:port]> [id <id>] [file <filename>]\n"
-	"     where cmd = put, get, commit, status, describe\n"
+	"  set|get  <parameter> <value> [node <node_id>]\n"
+	"     where parameter = node_id, ipaddr, netmask, defgw, ipsrc, macaddr\n"
+	"  update_config node <node_id>\n"
+	"\n"
+	"Ex: ipmitool cxoem fabric get ipaddr node 1\n"
+	"\n"
+	"\n"
+	"Fabric Config commands affect all nodes in the fabric\n"
+	"Usage: ipmitool cxoem fabric config <command> [option...]\n"
+	"\n"
+	"Fabric Config Commands: \n"
+	"\n"
+	"  set|get ipinfo tftp <tftp_server_addr:port> file <filename>\n" 
+	"  set|get ipsrc\n" 
+	"  set|get macaddrs tftp <tftp_server_addr:port> file <filename>\n" 
+	"  set|get mtu <standard|jumbo>\n" 
+	"  set|get uplink_mode <mode>\n" 
+	"    where mode is:\n"
+	"      0 - all interfaces go to Uplink0\n"
+	"      1 - managment interfaces go to Uplink0, server interfaces go to Uplink1\n"
+	"      2 - managment and eth0 interfaces go to Uplink0, eth1 interfaces go to Uplink1\n"
+	"  update_config\n"
+	"\n"
+	"Ex: ipmitool cxoem fabric config get ipinfo tftp 10.1.1.1:69 file ipinfo.out\n"
 	"\n");
 }
-
 
 int cx_fw_download(struct ipmi_intf *intf, char *filename, int slot, int type,
 		           int ip1, int ip2, int ip3, int ip4, int port)
@@ -129,8 +182,8 @@ int cx_fw_download(struct ipmi_intf *intf, char *filename, int slot, int type,
 
 	memset(&req, 0, sizeof(req));
 	memset(msg_data, 0, 64);
-	req.msg.netfn    = IPMI_NETFN_CXOEM;
-	req.msg.cmd      = IPMI_CXOEM_FW_DOWNLOAD;
+	req.msg.netfn    = IPMI_NETFN_OEM_SS;
+	req.msg.cmd      = IPMI_CMD_OEM_FW_DOWNLOAD;
 	msg_data[0] = type;
 	msg_data[1] = slot;
 	msg_data[2] = CXOEM_FWDL_START;
@@ -155,7 +208,7 @@ int cx_fw_download(struct ipmi_intf *intf, char *filename, int slot, int type,
 	}
 
 	if (rsp->ccode == 0) {
-		unsigned int handle;
+		uint16_t handle;
 		handle = (unsigned int)rsp->data[0];
 		handle |= (unsigned int)(rsp->data[1] << 8);
       	printf("TFTP Handle ID:  %d\n", handle);
@@ -178,8 +231,8 @@ int cx_fw_upload(struct ipmi_intf *intf, char *filename, int slot, int type,
 
 	memset(&req, 0, sizeof(req));
 	memset(msg_data, 0, 64);
-	req.msg.netfn    = IPMI_NETFN_CXOEM;
-	req.msg.cmd      = IPMI_CXOEM_FW_DOWNLOAD;
+	req.msg.netfn    = IPMI_NETFN_OEM_SS;
+	req.msg.cmd      = IPMI_CMD_OEM_FW_DOWNLOAD;
 	msg_data[0] = type;
 	msg_data[1] = slot;
 	msg_data[2] = CXOEM_FWUL_START;
@@ -192,8 +245,8 @@ int cx_fw_upload(struct ipmi_intf *intf, char *filename, int slot, int type,
 	msg_data[9] = ip4;
 	msg_data[10] = (port & 0xff);
 	msg_data[11] = (port >> 8) & 0xff;
-	msg_data[12] = strlen(filename) + 1;
-	memcpy(&msg_data[13], filename, msg_data[12]);
+	msg_data[12] = fmin(strlen(filename) + 1, 51);
+	memcpy(&msg_data[13], filename, msg_data[12]-1);
 	req.msg.data = msg_data;
 	req.msg.data_len = msg_data[12] + 13;
 
@@ -203,7 +256,7 @@ int cx_fw_upload(struct ipmi_intf *intf, char *filename, int slot, int type,
 		return -1;
 	}
 	if (rsp->ccode == 0) {
-		unsigned int handle;
+		uint16_t handle;
 		handle = (unsigned int)rsp->data[0];
 		handle |= (unsigned int)(rsp->data[1] << 8);
       	printf("TFTP Handle ID:  %d\n", handle);
@@ -227,8 +280,8 @@ int cx_fw_raw(struct ipmi_intf *intf, char *filename, unsigned int address,
 
 	memset(&req, 0, sizeof(req));
 	memset(msg_data, 0, 64);
-	req.msg.netfn    = IPMI_NETFN_CXOEM;
-	req.msg.cmd      = IPMI_CXOEM_FW_RAW;
+	req.msg.netfn    = IPMI_NETFN_OEM_SS;
+	req.msg.cmd      = IPMI_CMD_OEM_FW_RAW;
 	msg_data[0] = dir;
 	msg_data[1] = address & 0xff;
 	msg_data[2] = (address >> 8) & 0xff;
@@ -256,9 +309,10 @@ int cx_fw_raw(struct ipmi_intf *intf, char *filename, unsigned int address,
 	}
 
 	if (rsp->ccode == 0) {
-		unsigned int handle;
+		uint16_t handle;
 		handle = (unsigned int)rsp->data[0];
 		handle |= (unsigned int)(rsp->data[1] << 8);
+
       	printf("TFTP Handle ID:  %d\n", handle);
 	} else if (rsp->ccode > 0) {
 		lprintf(LOG_ERR, "Start raw transfer failed: %s",
@@ -270,7 +324,7 @@ int cx_fw_raw(struct ipmi_intf *intf, char *filename, unsigned int address,
 }
 
 int
-cx_fw_status(struct ipmi_intf *intf, int handle)
+cx_fw_status(struct ipmi_intf *intf, uint16_t handle)
 {
 	int    rc = CXOEM_SUCCESS;
 	struct ipmi_rs * rsp;
@@ -279,14 +333,15 @@ cx_fw_status(struct ipmi_intf *intf, int handle)
 	int status = -1;
 
 	memset(&req, 0, sizeof(req));
-	req.msg.netfn    = IPMI_NETFN_CXOEM;
-	req.msg.cmd      = IPMI_CXOEM_FW_GET_STATUS;
+	req.msg.netfn    = IPMI_NETFN_OEM_SS;
+	req.msg.cmd      = IPMI_CMD_OEM_FW_GET_STATUS;
 	msg_data[0] = 0;
 	msg_data[1] = 1; // param 1 = download status
-	msg_data[2] = handle & 0xff;
-	msg_data[3] = (handle >> 8) & 0xff;
+
+	msg_data[2] = handle & 0x00ff;
+	msg_data[3] = (handle >> 8) & 0x00ff;
 	req.msg.data = msg_data;
-	req.msg.data_len = 3;
+	req.msg.data_len = 4;
 
 	rsp = intf->sendrecv(intf, &req);
 	if (rsp == NULL) {
@@ -316,8 +371,8 @@ cx_fw_check(struct ipmi_intf *intf, int slot)
 
 	memset(&req, 0, sizeof(req));
 	memset(msg_data, 0, 64);
-	req.msg.netfn    = IPMI_NETFN_CXOEM;
-	req.msg.cmd      = IPMI_CXOEM_FW_GET_STATUS;
+	req.msg.netfn    = IPMI_NETFN_OEM_SS;
+	req.msg.cmd      = IPMI_CMD_OEM_FW_GET_STATUS;
 	msg_data[0] = 0;
 	msg_data[1] = 4; // param 4 = check image
 	msg_data[2] = slot;
@@ -364,8 +419,8 @@ cx_fw_info(struct ipmi_intf *intf, int slot)
 
 	memset(&req, 0, sizeof(req));
 	memset(msg_data, 0, 64);
-	req.msg.netfn    = IPMI_NETFN_CXOEM;
-	req.msg.cmd      = IPMI_CXOEM_FW_GET_STATUS;
+	req.msg.netfn    = IPMI_NETFN_OEM_SS;
+	req.msg.cmd      = IPMI_CMD_OEM_FW_GET_STATUS;
 	msg_data[0] = 0;
 	msg_data[1] = 2; // param 2 = info
 	msg_data[2] = slot;
@@ -413,8 +468,8 @@ cx_fw_flags(struct ipmi_intf *intf, int slot, uint32_t flags)
 
 	memset(&req, 0, sizeof(req));
 	memset(msg_data, 0, sizeof(msg_data));
-	req.msg.netfn    = IPMI_NETFN_CXOEM;
-	req.msg.cmd      = IPMI_CXOEM_FW_SET_STATUS;
+	req.msg.netfn    = IPMI_NETFN_OEM_SS;
+	req.msg.cmd      = IPMI_CMD_OEM_FW_SET_STATUS;
 	msg_data[0] = 0; // resvd
 	msg_data[1] = 1; // param = 1 = "set flags"
 	msg_data[2] = slot; 
@@ -450,8 +505,8 @@ cx_fw_get_flags(struct ipmi_intf *intf, int slot, unsigned int *flags)
 
 	memset(&req, 0, sizeof(req));
 	memset(msg_data, 0, 64);
-	req.msg.netfn    = IPMI_NETFN_CXOEM;
-	req.msg.cmd      = IPMI_CXOEM_FW_GET_STATUS;
+	req.msg.netfn    = IPMI_NETFN_OEM_SS;
+	req.msg.cmd      = IPMI_CMD_OEM_FW_GET_STATUS;
 	msg_data[0] = 0;
 	msg_data[1] = 3; // param 3 = get SIMG header
 	msg_data[2] = slot;
@@ -478,6 +533,38 @@ cx_fw_get_flags(struct ipmi_intf *intf, int slot, unsigned int *flags)
 	return rc;
 }
 
+
+int
+cx_fw_makenext(struct ipmi_intf *intf, int slot)
+{
+	struct ipmi_rs * rsp;
+	struct ipmi_rq   req;
+	uint8_t msg_data[4];
+	int i;
+
+	memset(&req, 0, sizeof(req));
+	memset(msg_data, 0, sizeof(msg_data));
+	req.msg.netfn    = IPMI_NETFN_OEM_SS;
+	req.msg.cmd      = IPMI_CMD_OEM_FW_SET_STATUS;
+	msg_data[0] = 0; // resvd
+	msg_data[1] = 3; // param = 3 = "make next"
+	msg_data[2] = slot; 
+	req.msg.data = msg_data;
+	req.msg.data_len = 3;
+
+	rsp = intf->sendrecv(intf, &req);
+	if (rsp == NULL) {
+		lprintf(LOG_ERR, "Error setting firmware image to 'next'");
+		return -1;
+	}
+	if (rsp->ccode > 0) {
+		lprintf(LOG_ERR, "FW set next failed: %s",
+					val2str(rsp->ccode, completion_code_vals));
+		return -1;
+	}
+
+	return 0;
+}
 
 int
 cx_fw_activate(struct ipmi_intf *intf, int slot)
@@ -518,6 +605,32 @@ cx_fw_invalidate(struct ipmi_intf *intf, int slot)
 
 
 int
+cx_fw_reset(struct ipmi_intf *intf)
+{
+	struct ipmi_rs * rsp;
+	struct ipmi_rq   req;
+
+	memset(&req, 0, sizeof(req));
+	req.msg.netfn    = IPMI_NETFN_OEM_SS;
+	req.msg.cmd      = IPMI_CMD_OEM_FW_RESET;
+
+	rsp = intf->sendrecv(intf, &req);
+	if (rsp == NULL) {
+		lprintf(LOG_ERR, "Error resetting firmware to factory default\n");
+		return -1;
+	}
+
+	if (rsp->ccode > 0) {
+		lprintf(LOG_ERR, "Firmware reset failed: %s",
+					val2str(rsp->ccode, completion_code_vals));
+		return -1;
+	}
+
+	return 0;
+}
+
+
+int
 cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 {
 	char filename[65];
@@ -544,7 +657,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 			}
 			else
 			{
-			   fprintf(stderr,"File name must be smaller than 32 bytes\n");
+			   lprintf(LOG_ERR,"File name must be smaller than 32 bytes\n");
 			}
 
 			slot = strtol(argv[2], (char **)NULL, 10);
@@ -552,7 +665,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 				printf("Slot              : %d\n", slot);
 			}
 			else {
-				fprintf(stderr,"<slot> doesn't look like a valid value\n");
+				lprintf(LOG_ERR,"<slot> doesn't look like a valid value\n");
 				return -1;
 			}
 
@@ -568,7 +681,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 				printf("Type              : %d\n", type);
 			}
 			else {
-				fprintf(stderr,"<type> doesn't look like a valid value\n");
+				lprintf(LOG_ERR,"<type> doesn't look like a valid value\n");
 				return -1;
 			}
 
@@ -614,7 +727,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 			}
 			else
 			{
-			   fprintf(stderr,"File name must be smaller than 32 bytes\n");
+			   lprintf(LOG_ERR,"File name must be smaller than 32 bytes\n");
 			}
 
 			slot = strtol(argv[1], (char **)NULL, 10);
@@ -622,7 +735,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 				printf("Slot              : %d\n", slot);
 			}
 			else {
-				fprintf(stderr,"<slot> doesn't look like a valid value\n");
+				lprintf(LOG_ERR,"<slot> doesn't look like a valid value\n");
 				return -1;
 			}
 
@@ -638,7 +751,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 				printf("Type              : %d\n", type);
 			}
 			else {
-				fprintf(stderr,"<type> doesn't look like a valid value\n");
+				lprintf(LOG_ERR,"<type> doesn't look like a valid value\n");
 				return -1;
 			}
 
@@ -687,7 +800,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 			}
 			else
 			{
-			   fprintf(stderr,"File name must be smaller than 32 bytes\n");
+			   lprintf(LOG_ERR,"File name must be smaller than 32 bytes\n");
 			}
 
 			addr = strtoul(argv[2], (char **)NULL, 0);
@@ -695,7 +808,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 				printf("Address   : %08x\n", addr);
 			}
 			else {
-				fprintf(stderr,"<address> doesn't look like a valid value\n");
+				lprintf(LOG_ERR,"<address> doesn't look like a valid value\n");
 				return -1;
 			}
 
@@ -704,7 +817,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 				printf("Size      : %08x\n", size);
 			}
 			else {
-				fprintf(stderr,"<size> doesn't look like a valid value\n");
+				lprintf(LOG_ERR,"<size> doesn't look like a valid value\n");
 				return -1;
 			}
 
@@ -753,7 +866,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 			}
 			else
 			{
-			   fprintf(stderr,"File name must be smaller than 32 bytes\n");
+			   lprintf(LOG_ERR,"File name must be smaller than 32 bytes\n");
 			}
 
 			addr = strtoul(argv[2], (char **)NULL, 0);
@@ -761,7 +874,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 				printf("Address   : %08x\n", addr);
 			}
 			else {
-				fprintf(stderr,"<address> doesn't look like a valid value\n");
+				lprintf(LOG_ERR,"<address> doesn't look like a valid value\n");
 				return -1;
 			}
 
@@ -770,7 +883,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 				printf("Size      : %08x\n", size);
 			}
 			else {
-				fprintf(stderr,"<size> doesn't look like a valid value\n");
+				lprintf(LOG_ERR,"<size> doesn't look like a valid value\n");
 				return -1;
 			}
 
@@ -806,7 +919,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 		}
 	}
 	else if (strncmp(argv[0], "status", 6) == 0) {
-		int handle = 0;
+		uint16_t handle = 0;
 
 		if (argc == 2) {
 			handle = strtol(argv[1], (char **)NULL, 10);
@@ -814,7 +927,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 				printf("Handle : %d\n", handle);
 			}
 			else {
-				fprintf(stderr,"<handle> doesn't look like a valid value\n");
+				lprintf(LOG_ERR,"<handle> doesn't look like a valid value\n");
 				return -1;
 			}
 		}
@@ -830,11 +943,28 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 				printf("Slot              : %d\n", slot);
 			}
 			else {
-				fprintf(stderr,"<slot> doesn't look like a valid value\n");
+				lprintf(LOG_ERR,"<slot> doesn't look like a valid value\n");
 				return -1;
 			}
 		}
 		cx_fw_info(intf, slot);
+	}
+	else if (strncmp(argv[0], "makenext", 8) == 0) {
+		if (argc == 2) {
+			slot = strtol(argv[1], (char **)NULL, 10);
+			if (!errno) {
+				printf("Slot              : %d\n", slot);
+			}
+			else {
+				fprintf(stderr,"<slot> doesn't look like a valid value\n");
+				return -1;
+			}
+		}
+		else {
+			cx_fw_usage();
+			return -1;
+		}
+		cx_fw_makenext(intf, slot);
 	}
 	else if (strncmp(argv[0], "activate", 8) == 0) {
 		int slot = -1;
@@ -845,7 +975,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 				printf("Slot              : %d\n", slot);
 			}
 			else {
-				fprintf(stderr,"<slot> doesn't look like a valid value\n");
+				lprintf(LOG_ERR,"<slot> doesn't look like a valid value\n");
 				return -1;
 			}
 		}
@@ -864,7 +994,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 				printf("Slot              : %d\n", slot);
 			}
 			else {
-				fprintf(stderr,"<slot> doesn't look like a valid value\n");
+				lprintf(LOG_ERR,"<slot> doesn't look like a valid value\n");
 				return -1;
 			}
 		}
@@ -884,7 +1014,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 				printf("Slot              : %d\n", slot);
 			}
 			else {
-				fprintf(stderr,"<slot> doesn't look like a valid value\n");
+				lprintf(LOG_ERR,"<slot> doesn't look like a valid value\n");
 				return -1;
 			}
 			flags = strtoul(argv[2], (char **)NULL, 16);
@@ -892,7 +1022,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 				printf("Flags             : %08x\n", flags);
 			}
 			else {
-				fprintf(stderr,"<flags> doesn't look like a valid value\n");
+				lprintf(LOG_ERR,"<flags> doesn't look like a valid value\n");
 				return -1;
 			}
 		}
@@ -911,7 +1041,7 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 				printf("Slot  :  %d\n", slot);
 			}
 			else {
-				fprintf(stderr,"<slot> doesn't look like a valid value\n");
+				lprintf(LOG_ERR,"<slot> doesn't look like a valid value\n");
 				return -1;
 			}
 		}
@@ -920,6 +1050,10 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 			return -1;
 		}
 		cx_fw_check(intf, slot);
+		rv = 0;
+	}
+	else if (strncmp(argv[0], "reset", 5) == 0) {
+		cx_fw_reset(intf);
 		rv = 0;
 	}
 	else {
@@ -931,319 +1065,1003 @@ cx_fw_main(struct ipmi_intf * intf, int argc, char ** argv)
 	return rv;
 }
 
+typedef enum {
+	Cx_Fabric_Arg_Invalid,
+	Cx_Fabric_Arg_Command,
+	Cx_Fabric_Arg_Parameter,
+	Cx_Fabric_Arg_Specifier,
+	Cx_Fabric_Arg_Value_Scalar,
+	Cx_Fabric_Arg_Value_String,
+	Cx_Fabric_Arg_Value_IPV4_Address,
+	Cx_Fabric_Arg_Value_MAC_Address,
+} cx_fabric_arg_type_t;
 
-int
-cx_fabric_param(struct ipmi_intf *intf, int direction, 
-		        unsigned short param, int value)
-{
-	int    rc = CXOEM_SUCCESS;
-	struct ipmi_rs * rsp;
-	struct ipmi_rq   req;
-	uint8_t msg_data[8];
+typedef struct {
+	char *keyword;
+	cx_fabric_arg_type_t arg_type;
+	void *data;
+} cx_fabric_arg_t;
 
-	memset(&req, 0, sizeof(req));
-	memset(msg_data, 0, 8);
-	req.msg.netfn    = IPMI_NETFN_CXOEM;
-	req.msg.cmd      = IPMI_CXOEM_FABRIC_GET_PARAM;
-	req.msg.cmd      += direction;
-	msg_data[0] = 0;
-	msg_data[1] = 1; // only get switch, i.e. "1", params for now
-	msg_data[2] = param;
-	msg_data[3] = value;
-	req.msg.data = msg_data;
-	req.msg.data_len = 3 + direction;
+#define MAX_PERMITTED_PARAMS 10
+#define MAX_PERMITTED_SPECIFIERS 5
+#define MAX_REQUIRED_SPECIFIERS 5
+typedef struct {
+	char *keyword;
+	uint8_t ipmi_cmd;
+	uint8_t parameter_required;
+	uint8_t parameter_value_expected;
+	uint8_t permitted_params[MAX_PERMITTED_PARAMS];
+	uint8_t permitted_specifiers[MAX_PERMITTED_SPECIFIERS];
+	uint8_t required_specifiers[MAX_REQUIRED_SPECIFIERS];
+} cx_fabric_cmd_t;
 
-	rsp = intf->sendrecv(intf, &req);
-	if (rsp == NULL) {
-		lprintf(LOG_ERR, "Error during fabric param command\n");
-		return -1;
+cx_fabric_cmd_t update_cmd = {
+	"update_config",
+	IPMI_CMD_OEM_FABRIC_UPDATE_CONFIG,
+	0, 0,
+	{ 0, 0, 0, 0, 0 },
+	{ IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
+
+cx_fabric_cmd_t get_cmd = {
+	"get",
+	IPMI_CMD_OEM_FABRIC_GET,
+	1, 0,
+	{ 	IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR, 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_NETMASK, 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_DEFGW, 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_IPSRC, 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR,
+		IPMI_CMD_OEM_FABRIC_PARAMETER_NODEID 
+	},
+	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 
+		0, 0, 0 
+	},
+	{ 	0, 0, 0, 0, 0 
 	}
+};
 
-	if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "Fabric param command failed: %s",
-					val2str(rsp->ccode, completion_code_vals));
-		return -1;
+cx_fabric_cmd_t set_cmd = {
+	"set",
+	IPMI_CMD_OEM_FABRIC_SET,
+	1, 1,
+	{ 	IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR, 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_NETMASK, 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_DEFGW, 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_IPSRC, 
+		0 
+	},
+	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0
+	},
+	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 0, 0, 0, 0 
 	}
+};
 
-	if ((rsp->ccode == 0) && !direction) {
-		unsigned int value;
-		value = (unsigned int)(rsp->data[2] << 8);
-		value |= (unsigned int)rsp->data[1];
-		printf("Value :  %x\n", value);
-	} 
+#define MAC_ADDRESS_SIZE    6
+typedef uint8_t mac_address_t[MAC_ADDRESS_SIZE];
 
-	return rc;
-}
+#define IPV4_ADDRESS_SIZE   4
+typedef uint8_t ipv4_address_t[IPV4_ADDRESS_SIZE];
 
-int
-cx_fabric_cmd(struct ipmi_intf *intf, char *filename, int cmd, int id, 
-              int ip1, int ip2, int ip3, int ip4, int port)
+#define MAX_VAL_STRING 20
+typedef union {
+	uint8_t scalar[4];
+	mac_address_t mac_addr;
+	ipv4_address_t ipv4_addr;
+	char string[MAX_VAL_STRING];
+} cx_fabric_value_u;
+
+typedef struct {
+	cx_fabric_arg_type_t val_type;
+	cx_fabric_value_u val;
+	uint8_t val_len;
+} cx_fabric_value_t;
+
+typedef struct {
+	char *keyword;
+	uint8_t param;
+	uint8_t required_specifiers[MAX_REQUIRED_SPECIFIERS];
+	cx_fabric_arg_type_t val_type;
+	int val_len;
+	void (*printer)(void *data, int len);
+} cx_fabric_param_t;
+
+typedef struct {
+	char *keyword;
+	uint8_t spec;
+	cx_fabric_arg_type_t val_type;
+	int val_len;
+	void (*printer)(void *data, int len);
+} cx_fabric_spec_t;
+
+void cx_fabric_string_printer( void *data, int len )
 {
-	int    rc = CXOEM_SUCCESS;
-	struct ipmi_rs * rsp;
-	struct ipmi_rq   req;
-	uint8_t msg_data[60];
-
-	memset(&req, 0, sizeof(req));
-	memset(msg_data, 0, sizeof(msg_data));
-
-	req.msg.netfn    = IPMI_NETFN_CXOEM;
-	req.msg.cmd      = IPMI_CXOEM_FABRIC_ACCESS;
-	msg_data[0] = cmd;
-	msg_data[1] = id;
-	msg_data[2] = 6; // ipv4 addresses by default (for now)
-	msg_data[3] = ip1;
-	msg_data[4] = ip2;
-	msg_data[5] = ip3;
-	msg_data[6] = ip4;
-	msg_data[7] = (port & 0xff);
-	msg_data[8] = (port >> 8) & 0xff;
-	msg_data[9] = strlen(filename) + 1;
-	memcpy(&msg_data[10], filename, msg_data[9]);
-	req.msg.data = msg_data;
-	req.msg.data_len = msg_data[9] + 10;
-
-	rsp = intf->sendrecv(intf, &req);
-
-	if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "Fabric access command failed: %s",
-					val2str(rsp->ccode, completion_code_vals));
-		return -1;
-	}
-
-	return rc;
-}
-
-int
-cx_fabric_access(struct ipmi_intf * intf, int argc, char ** argv)
-{
-	char filename[40];
-	int rv = 0;
-	int cmd = 0, id = -1;
-	int ip1 = 0, ip2 = 0, ip3 = 0, ip4 = 0;
-	int port = 0;
-	int expect_file = 0;
-	int expect_id = 0;
 	int i;
+	cx_fabric_value_t *val = (cx_fabric_value_t *)data;
+	int value = 0;
+
+	lprintf(LOG_NOTICE, "%s\n", val->val.string);
+	return;
+}
+
+void cx_fabric_scalar_printer( void *data, int len )
+{
+	int i;
+	cx_fabric_value_t *val = (cx_fabric_value_t *)data;
+	int value = 0;
+
+	for( i = 0 ; i < len ; i++ ) {
+		value |= (val->val.scalar[i] << (8*i));
+	}
+	lprintf(LOG_NOTICE, "%d\n", value);
+	return;
+}
+
+void cx_fabric_ipv4_printer( void *data, int len )
+{
+	cx_fabric_value_t *val = (cx_fabric_value_t *)data;
+	lprintf(LOG_NOTICE, "%d.%d.%d.%d\n", val->val.ipv4_addr[0], 
+		val->val.ipv4_addr[1], val->val.ipv4_addr[2], val->val.ipv4_addr[3]);
+	return;
+}
+
+void cx_fabric_mac_printer( void *data, int len )
+{
+	cx_fabric_value_t *val = (cx_fabric_value_t *)data;
+	lprintf(LOG_NOTICE, "%02x:%02x:%02x:%02x:%02x:%02x\n", 
+		val->val.mac_addr[0], val->val.mac_addr[1], val->val.mac_addr[2], 
+		val->val.mac_addr[3], val->val.mac_addr[4], val->val.mac_addr[5]);
+	return;
+}
+
+cx_fabric_param_t ipaddr_param = {
+	"ipaddr",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR,
+	{ 0, 0, 0, 0, 0 },
+	Cx_Fabric_Arg_Value_IPV4_Address, 4,
+	cx_fabric_ipv4_printer
+};
+
+cx_fabric_param_t ipsrc_param = {
+	"ipsrc",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_IPSRC,
+	{ 0, 0, 0, 0, 0 },
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t netmask_param = {
+	"netmask",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_NETMASK,
+	{ 0, 0, 0, 0, 0 },
+	Cx_Fabric_Arg_Value_IPV4_Address, 4,
+	cx_fabric_ipv4_printer
+};
+
+cx_fabric_param_t defgw_param = {
+	"defgw",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_DEFGW,
+	{ 0, 0, 0, 0, 0 },
+	Cx_Fabric_Arg_Value_IPV4_Address, 4,
+	cx_fabric_ipv4_printer
+};
+
+cx_fabric_param_t nodeid_param = {
+	"nodeid",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_NODEID,
+	{ 0, 0, 0, 0, 0 },
+	Cx_Fabric_Arg_Value_Scalar, 2,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t macaddr_param = {
+	"macaddr",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR,
+	{ IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0, 0 },
+	Cx_Fabric_Arg_Value_MAC_Address, 6,
+	cx_fabric_mac_printer
+};
+
+cx_fabric_spec_t node_spec = {
+	"node",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
+	Cx_Fabric_Arg_Value_Scalar, 2,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_spec_t interface_spec = {
+	"interface",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_arg_t cx_fabric_main_arg[] = {
+	{ "get", Cx_Fabric_Arg_Command, (void *)&get_cmd },
+	{ "set", Cx_Fabric_Arg_Command, (void *)&set_cmd },
+	{ "update_config", Cx_Fabric_Arg_Command, (void *)&update_cmd },
+	{ "ipaddr", Cx_Fabric_Arg_Parameter, (void *)&ipaddr_param },
+	{ "ipsrc", Cx_Fabric_Arg_Parameter, (void *)&ipsrc_param },
+	{ "netmask", Cx_Fabric_Arg_Parameter, (void *)&netmask_param },
+	{ "defgw", Cx_Fabric_Arg_Parameter, (void *)&defgw_param },
+	{ "macaddr", Cx_Fabric_Arg_Parameter, (void *)&macaddr_param },
+	{ "nodeid", Cx_Fabric_Arg_Parameter, (void *)&nodeid_param },
+	{ "node", Cx_Fabric_Arg_Specifier, (void *)&node_spec },
+	{ "interface", Cx_Fabric_Arg_Specifier, (void *)&interface_spec },
+	{ NULL, Cx_Fabric_Arg_Invalid, (void *)NULL },
+};
+
+cx_fabric_cmd_t config_get_cmd = {
+	"get",
+	IPMI_CMD_OEM_FABRIC_CONFIG_GET,
+	1, 0,
+	{ 	IPMI_CMD_OEM_FABRIC_PARAMETER_IPINFO, 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_IPSRC, 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_MTU, 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_MODE, 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDRS 
+	},
+	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP, 
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT, 
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 
+		0, 0 },
+	{ 	0, 0, 0, 0, 0 }
+};
+
+cx_fabric_cmd_t config_set_cmd = {
+	"set",
+	IPMI_CMD_OEM_FABRIC_CONFIG_SET,
+	1, 1,
+	{ 	IPMI_CMD_OEM_FABRIC_PARAMETER_IPINFO, 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_IPSRC, 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_MTU, 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_MODE, 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDRS 
+	},
+	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP, 
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT, 
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 
+		0, 0 },
+	{ 	0, 0, 0, 0, 0 }
+};
+
+cx_fabric_cmd_t update_config_cmd = {
+	"update_config",
+	IPMI_CMD_OEM_FABRIC_UPDATE_CONFIG,
+	0, 0,
+	{ 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
+
+cx_fabric_param_t ipinfo_config_param = {
+	"ipinfo",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_IPINFO,
+	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP, 
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 
+		0, 0, 0 
+	},
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
+cx_fabric_param_t ipsrc_config_param = {
+	"ipsrc",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_IPSRC,
+	{ 	0, 0, 0, 0, 0 },
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t mtu_config_param = {
+	"mtu",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_MTU,
+	{ 	0, 0, 0, 0, 0 },
+	Cx_Fabric_Arg_Value_Scalar, 2,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t uplink_mode_config_param = {
+	"uplink_mode",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_MTU,
+	{ 	0, 0, 0, 0, 0 },
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t macaddrs_config_param = {
+	"macaddrs",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDRS,
+	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP, 
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 
+		0, 0, 0 
+	},
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
+cx_fabric_spec_t tftp_config_spec = {
+	"tftp",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
+	Cx_Fabric_Arg_Value_IPV4_Address, 4,
+	cx_fabric_ipv4_printer
+};
+
+cx_fabric_spec_t port_config_spec = {
+	"port",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
+	Cx_Fabric_Arg_Value_Scalar, 2,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_spec_t file_config_spec = {
+	"file",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME,
+	Cx_Fabric_Arg_Value_String, 20,
+	cx_fabric_string_printer
+};
+
+cx_fabric_arg_t cx_fabric_config_arg[] = {
+	{ "get", Cx_Fabric_Arg_Command, (void *)&config_get_cmd },
+	{ "set", Cx_Fabric_Arg_Command, (void *)&config_set_cmd },
+	{ "update_config", Cx_Fabric_Arg_Command, (void *)&update_config_cmd },
+	{ "ipinfo", Cx_Fabric_Arg_Parameter, (void *)&ipinfo_config_param },
+	{ "ipsrc", Cx_Fabric_Arg_Parameter, (void *)&ipsrc_config_param },
+	{ "mtu", Cx_Fabric_Arg_Parameter, (void *)&mtu_config_param },
+	{ "uplink_mode", Cx_Fabric_Arg_Parameter, 
+		(void *)&uplink_mode_config_param },
+	{ "macaddrs", Cx_Fabric_Arg_Parameter, (void *)&macaddrs_config_param },
+	{ "tftp", Cx_Fabric_Arg_Specifier, (void *)&tftp_config_spec },
+	{ "port", Cx_Fabric_Arg_Specifier, (void *)&port_config_spec },
+	{ "file", Cx_Fabric_Arg_Specifier, (void *)&file_config_spec },
+	{ NULL, Cx_Fabric_Arg_Invalid, (void *)NULL },
+};
+
+cx_fabric_arg_type_t 
+cx_fabric_find_arg_type( cx_fabric_arg_t *arg_type_list, char *arg )
+{
+	int i, ip0, ip1, ip2, ip3; 
+	int mac0, mac1, mac2, mac3, mac4, mac5;
+	int val;
+	int ret;
 
 	errno = 0;
 
-	if (argc < 3 || strncmp(argv[0], "help", 4) == 0) {
-		cx_fabric_usage();
-		return 0;
-	}
-
-	memset(filename, 0, sizeof(filename));
-
-	if (strncmp(argv[0], "put", 3) == 0) {
-		cmd = 2;
-		expect_file = 1;
-		expect_id = 0;
-	}
-	else if (strncmp(argv[0], "get", 3) == 0) {
-		cmd = 1;
-		expect_file = 1;
-		expect_id = 1;
-	}
-	else if (strncmp(argv[0], "commit", 6) == 0) {
-		cmd = 4;
-		expect_file = 0;
-		expect_id = 0;
-	}
-	else if (strncmp(argv[0], "status", 6) == 0) {
-		cmd = 3;
-		expect_file = 0;
-		expect_id = 1;
-	}
-	else if (strncmp(argv[0], "describe", 8) == 0) {
-		cmd = 5;
-		expect_file = 1;
-		expect_id = 0;
-	}
-	else {
-		fprintf(stderr,"<cmd> invalid\n");
-		return -1;
-	}
-
-	if (strncmp(argv[1], "tftp", 4) == 0) {
-		if (strchr(argv[2], ':')) {
-			if (sscanf(argv[2], "%d.%d.%d.%d:%d", 
-					&ip1, &ip2, &ip3, &ip4, &port) != 5) {
-				lprintf(LOG_ERR, "Invalid IP address: %s", argv[2]);
-				return -1;
-			}
-			printf("IP = %d.%d.%d.%d:%d\n", ip1, ip2, ip3, ip4, port);
-		} else {
-			if (sscanf(argv[2], "%d.%d.%d.%d", 
-					&ip1, &ip2, &ip3, &ip4) != 4) {
-				lprintf(LOG_ERR, "Invalid IP address: %s", argv[2]);
-				return -1;
-			}
-			printf("IP = %d.%d.%d.%d\n", ip1, ip2, ip3, ip4);
-		}
-	}
-	else {
-		cx_fabric_usage();
-		return -1;
-	}
-
-	/*
-	 * At this point, argv[0] thru argv[2] have been handled. 
-	 * The <id> and <file> args are optional
-	 * Cheap and dirty algorithm follows...
-	 * 1. Make sure the number of remaining args is consistent with
-	 *    expectations
-	 * 2. Check for <id> and/or <file> and parse accordingly
-	 */
-
-	if ((expect_id || expect_file) && (argc != 5) && (argc != 7)) {
-		printf("Missing <id> and/or <file> args\n");
-		return -1;
-	}
-
-	i = 3;
-	while (i < argc) {
-		if (strncmp(argv[i], "file", 4) == 0) {
-			i++;
-			if(strlen(argv[i]) < 32)
-			{
-			   strcpy((char *)filename, argv[i]);
-			   printf("File Name         : %s\n", filename);
-			}
-			else
-			{
-			   fprintf(stderr,"File name must be less than 32 bytes\n");
-			   return -1;
-			}
-		}
-		else if (strncmp(argv[i], "id", 2) == 0) {
-			i++;
-			if (isdigit(argv[i][0])) {
-				id = strtol(argv[i], (char **)NULL, 10);
-			}
-			if (!errno) {
-				printf("Id    : %d\n", id);
-			}
-			else {
-				fprintf(stderr,"<id> doesn't look like a valid value\n");
-				return -1;
-			}
+	// First see if it is a standard type (Command, Parameter, Specifier)
+	i = 0; 
+	while( arg_type_list[i].keyword != NULL ) {
+		if( !strncasecmp(arg, arg_type_list[i].keyword, 
+				strlen(arg_type_list[i].keyword))) {
+			return arg_type_list[i].arg_type;
 		}
 		i++;
 	}
 
-	if (expect_file && !strlen(filename)) {
-		fprintf(stderr, "No valid filename was entered\n");
-		return -1;
+	// If not, is it an expected value type (Scalar, String, 
+	//		IPV4 address, MAC address
+
+	// Is it a MAC Address?
+	if(( sscanf( arg, "%02x:%02x:%02x:%02x:%02x:%02x", 
+		&mac0, &mac1, &mac2, &mac3, &mac4, &mac5 )) == 6 ) {
+		return Cx_Fabric_Arg_Value_MAC_Address;
 	}
 
-	if (expect_id && (id == -1)) {
-		fprintf(stderr, "No valid <id> was entered\n");
-		return -1;
+	// Is it an IPV4 Address?
+	if(( sscanf( arg, "%d.%d.%d.%d", &ip0, &ip1, &ip2, &ip3 )) == 4 ) {
+		return Cx_Fabric_Arg_Value_IPV4_Address;
 	}
 
-	cx_fabric_cmd(intf, filename, cmd, id, ip1, ip2, ip3, ip4, port);
+	// Is it a string?
+	if( isalpha( arg[0] )) {
+		// Probably...
+		return Cx_Fabric_Arg_Value_String;
+	}
 
-	return 0;
+	// Is it scalar?
+	val = strtol( arg, NULL, 10 );
+	if( errno == 0 ) {
+		return Cx_Fabric_Arg_Value_Scalar;
+	}
 
+	return Cx_Fabric_Arg_Invalid;
+}
+
+cx_fabric_cmd_t *
+cx_fabric_get_cmd( cx_fabric_arg_t *arg_type_list, char *arg )
+{
+	int i; 
+
+	errno = 0;
+
+	i = 0; 
+	while( arg_type_list[i].keyword != NULL ) {
+		if( !strncasecmp(arg, arg_type_list[i].keyword, 
+				strlen(arg_type_list[i].keyword))) {
+			return ((cx_fabric_cmd_t *)arg_type_list[i].data);
+		}
+		i++;
+	}
+	return NULL;
+}
+
+cx_fabric_param_t *
+cx_fabric_get_param( cx_fabric_arg_t *arg_type_list, char *arg )
+{
+	int i; 
+
+	errno = 0;
+
+	i = 0; 
+	while( arg_type_list[i].keyword != NULL ) {
+		if( !strncasecmp(arg, arg_type_list[i].keyword, 
+				strlen(arg_type_list[i].keyword))) {
+			return ((cx_fabric_param_t *)arg_type_list[i].data);
+		}
+		i++;
+	}
+	return NULL;
+}
+
+cx_fabric_spec_t *
+cx_fabric_get_spec( cx_fabric_arg_t *arg_type_list, char *arg )
+{
+	int i; 
+
+	errno = 0;
+
+	i = 0; 
+	while( arg_type_list[i].keyword != NULL ) {
+		if( !strncasecmp(arg, arg_type_list[i].keyword, 
+				strlen(arg_type_list[i].keyword))) {
+			return ((cx_fabric_spec_t *)arg_type_list[i].data);
+		}
+		i++;
+	}
+	return NULL;
 }
 
 
-int
-cx_fabric_main(struct ipmi_intf * intf, int argc, char ** argv)
+int 
+cx_fabric_get_value( 
+	cx_fabric_arg_type_t val_type, char *arg, cx_fabric_value_t *value )
 {
-	int rv = 0;
-	int argnum = 3;
-	int value;
-	int direction;
+	int val;
 
-	errno = 0;
+	value->val_type = val_type;
+	switch( val_type ) {
+		case Cx_Fabric_Arg_Value_Scalar:
+			val = strtol( arg, NULL, 10 );
+			value->val.scalar[0] = val & 0xff;
+			value->val.scalar[1] = ((val >> 8) & 0xff);
+			value->val.scalar[2] = ((val >> 16) & 0xff);
+			value->val.scalar[3] = ((val >> 24) & 0xff);
+			value->val_len = 4;
+			break;	
+		case Cx_Fabric_Arg_Value_String:
+			strncpy( value->val.string, arg, MAX_VAL_STRING );
+			value->val_len = strlen(value->val.string);
+			break;
+		case Cx_Fabric_Arg_Value_IPV4_Address:
+			sscanf( arg, "%d.%d.%d.%d", 
+				(int *)&value->val.ipv4_addr[0], 
+				(int *)&value->val.ipv4_addr[1],
+				(int *)&value->val.ipv4_addr[2], 
+				(int *)&value->val.ipv4_addr[3]);
+			value->val_len = 4;
+			break;
+		case Cx_Fabric_Arg_Value_MAC_Address:
+			sscanf( arg, "%02x:%02x:%02x:%02x:%02x:%02x", 
+				(int *)&value->val.mac_addr[0], (int *)&value->val.mac_addr[1],
+				(int *)&value->val.mac_addr[2], (int *)&value->val.mac_addr[3],
+				(int *)&value->val.mac_addr[4], (int *)&value->val.mac_addr[5]);
+			value->val_len = 6;
+			break;
+		default:
+			return -1;
+			break;
+	};
+	return 0;
+}
+
+#define MAX_SPECS 4
+int
+cx_fabric_cmd_parser(
+	struct ipmi_intf * intf, 
+	cx_fabric_arg_t *args,
+	int argc, char **argv)
+{
+	int ret, i, j, cur_arg = 0;
+	cx_fabric_arg_type_t arg_type;
+	struct ipmi_rq   req;
+	struct ipmi_rs * rsp;
+	uint8_t msg_data[128];
+	cx_fabric_cmd_t *cmd = NULL;
+	cx_fabric_param_t *param = NULL;
+	cx_fabric_value_t param_value;
+	cx_fabric_spec_t *spec[] = { NULL, NULL, NULL, NULL };
+	cx_fabric_value_t spec_value[MAX_SPECS];
+	uint8_t spec_count = 0, req_specs = 0, req_specs_found = 0;
+	int data_pos = 0;
+
 
 	if (argc < 1 || strncmp(argv[0], "help", 4) == 0) {
 		cx_fabric_usage();
 		return 0;
 	}
 
-	if (strncmp(argv[0], "config", 6) == 0) {
-		cx_fabric_access(intf, argc-1, &argv[1]);
-		return 0;
-	}
-	else if (strncmp(argv[0], "get", 3) == 0) {
-		direction = 0;
-	} else if (strncmp(argv[0], "set", 3) == 0) {
-		direction = 1;
-	} else {
-		cx_fabric_usage();
-		return 0;
-	}
+	param_value.val_type = Cx_Fabric_Arg_Invalid;
+	memset( &spec_value[0], 0, MAX_SPECS*sizeof(cx_fabric_value_t));
+	memset(&req, 0, sizeof(req));
+	memset(msg_data, 0, 128);
+	req.msg.netfn    = IPMI_NETFN_OEM_SS;
 
-	argnum += direction;
+	// Each argument is either a command, a parameter, a value, or a specifier
+	// Commands are config, get, set, update
+	// Parameters are ipaddr, ipsrc, netmask, defgw, macaddr
+	// Specifiers are node, interface
+	// Values can be a decimal number, ipv4 address, mac address, or
+	//    the strings "static" or "dynamic"
 
-	if (direction) {
-			if (argv[2] == NULL) {
-				fprintf(stderr, "No param value was found\n");
+	while( cur_arg < argc ) {
+		arg_type = cx_fabric_find_arg_type( args, argv[cur_arg]);
+
+		if( arg_type == Cx_Fabric_Arg_Command ) {
+			cmd = cx_fabric_get_cmd( args, argv[cur_arg] );
+			if( cmd == NULL ) {
+				lprintf(LOG_NOTICE, "No defined activity for cmd %s\n",
+					argv[cur_arg]);
+				cur_arg++;
+				continue;
+			}
+			req.msg.cmd = cmd->ipmi_cmd;
+		}
+		else if( arg_type == Cx_Fabric_Arg_Parameter ) {
+			param = cx_fabric_get_param( args, argv[cur_arg] );
+
+
+			if(( cmd->parameter_value_expected ) &&
+				( param->val_type != Cx_Fabric_Arg_Invalid )) {
+
+				if(( cur_arg + 1 ) >= argc ) {
+					lprintf(LOG_ERR, "No value specified for parameter %s\n",
+						param->keyword );
+					return -1;
+					
+				}
+				// Now we need to look at its value
+				cur_arg++;
+	
+				arg_type = cx_fabric_find_arg_type( args, 
+					argv[cur_arg]);
+				if( arg_type != param->val_type ) {
+					lprintf(LOG_ERR, "Invalid value type for parameter %s\n",
+						param->keyword );
+					return -1;
+				}
+	
+				ret = cx_fabric_get_value( arg_type, argv[cur_arg], 
+					&param_value );
+			}
+		}
+		else if( arg_type == Cx_Fabric_Arg_Specifier ) {
+			spec[spec_count] = cx_fabric_get_spec( args, 
+				argv[cur_arg] );
+
+			if(( cur_arg + 1 ) >= argc ) {
+				lprintf(LOG_ERR, "No  value specified for specifier %s\n",
+					spec[spec_count]->keyword );
+				return -1;
+				
+			}
+			// Now we need to look at its value
+			cur_arg++;
+
+			arg_type = cx_fabric_find_arg_type( args, 
+				argv[cur_arg]);
+			if( arg_type != spec[spec_count]->val_type ) {
+				lprintf(LOG_ERR, "Invalid value type for specifier %s\n",
+					spec[spec_count]->keyword );
 				return -1;
 			}
-			value = strtol(argv[2], (char **)NULL, 10);
-			if (!errno) {
-				printf("Value   : %d\n", value);
+
+			ret = cx_fabric_get_value( arg_type, argv[cur_arg], 
+				&spec_value[spec_count] );
+			spec_count++;
+		}
+		else {
+			lprintf(LOG_ERR, "Unexpected argument\n" );
+			goto cx_fabric_main_error_out;
+		}
+
+		cur_arg++;
+	}
+
+	if( cmd == NULL ) {
+		goto cx_fabric_main_error_out;
+	}
+
+	// Now, sanity check everything before forming the message
+	// Does this command require a parameter, if so do we have one?
+	if( cmd->parameter_required ) {
+		if( param == NULL ) {
+			lprintf(LOG_ERR, "Required parameter for cmd %s missing\n",
+				cmd->keyword);
+			goto cx_fabric_main_error_out;
+
+		}
+	}
+	// Does this command accept the parameter being passed?
+	if( param ) {
+		for( i = 0 ; i < MAX_PERMITTED_PARAMS ; i++ ) {
+			if( param->param == cmd->permitted_params[i] ) {
+				break;
 			}
-			else {
-				fprintf(stderr,"<value> doesn't look valid\n");
-				return -1;
+		}
+		if( i == MAX_PERMITTED_PARAMS ) {
+			lprintf(LOG_ERR, "Parameter %s not permitted for cmd %s\n",
+				param->keyword, cmd->keyword);
+			goto cx_fabric_main_error_out;
+		}
+	}
+	// Does this command accept the specifiers that are given
+	for( j = 0 ; j < MAX_SPECS ; j++ ) {
+		if( spec[j] ) {
+			for( i = 0 ; i < MAX_PERMITTED_SPECIFIERS ; i++ ) {
+				if( spec[j]->spec == cmd->permitted_specifiers[i] ) {
+					break;
+				}
 			}
+			if( i == MAX_PERMITTED_SPECIFIERS ) {
+				lprintf(LOG_ERR, "Specifier %s not permitted for cmd %s\n",
+					spec[j]->keyword, cmd->keyword);
+				goto cx_fabric_main_error_out;
+			}
+		}
+	}
+	// Are all required specifiers for the command present?
+	for( j = 0 ; j < MAX_REQUIRED_SPECIFIERS ; j++ ) {
+		if( cmd->required_specifiers[j] != 0 ) {
+			req_specs++;
+			for( i = 0 ; i < MAX_SPECS ; i++ ) {
+				if( spec[i] ) {
+					if( spec[i]->spec == cmd->required_specifiers[j] ) {
+						req_specs_found++;
+					}
+				}
+			}
+		}
+	}
+	if( req_specs != req_specs_found ) {
+		lprintf(LOG_ERR, "Required specifiers for command %s missing\n",
+			cmd->keyword );
+		goto cx_fabric_main_error_out;
+	}
+	// Are all the required specifiers for the parameter present
+	if( param ) {
+		for( j = 0 ; j < MAX_REQUIRED_SPECIFIERS ; j++ ) {
+			if( param->required_specifiers[j] != 0 ) {
+				req_specs++;
+				for( i = 0 ; i < MAX_SPECS ; i++ ) {
+					if( spec[i] ) {
+						if( spec[i]->spec == param->required_specifiers[j] ) {
+							req_specs_found++;
+						}
+					}
+				}
+			}
+		}
+	}
+	if( req_specs != req_specs_found ) {
+		lprintf(LOG_ERR, "Required specifiers for parameter %s missing\n",
+			param->keyword );
+		goto cx_fabric_main_error_out;
 	}
 
-	if (strncmp(argv[1], "node", 4) == 0) {
+	// Start filling in msg_data
+	if( param ) {
+		msg_data[data_pos++] = param->param;
 
-		cx_fabric_param(intf, direction, 1, value);
-
+		if( param_value.val_type != Cx_Fabric_Arg_Invalid ) {
+			switch( param_value.val_type ) {
+				case Cx_Fabric_Arg_Value_Scalar:
+					msg_data[data_pos++] = MSG_PARAM_VAL_START_SCALAR;
+					for( i = 0 ; i < param_value.val_len ; i++ ) {
+						msg_data[data_pos++] = param_value.val.scalar[i];
+					}
+					msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
+					break;
+				case Cx_Fabric_Arg_Value_String:
+					msg_data[data_pos++] = MSG_PARAM_VAL_START_STRING;
+					for( i = 0 ; i < param_value.val_len ; i++ ) {
+						msg_data[data_pos++] = param_value.val.string[i];
+					}
+					msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
+					break;
+				case Cx_Fabric_Arg_Value_IPV4_Address:
+					msg_data[data_pos++] = MSG_PARAM_VAL_START_IPV4_ADDR;
+					for( i = 0 ; i < param_value.val_len ; i++ ) {
+						msg_data[data_pos++] = param_value.val.ipv4_addr[i];
+					}
+					msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
+					break;
+				case Cx_Fabric_Arg_Value_MAC_Address:
+					msg_data[data_pos++] = MSG_PARAM_VAL_START_MAC_ADDR;
+					for( i = 0 ; i < param_value.val_len ; i++ ) {
+						msg_data[data_pos++] = param_value.val.mac_addr[i];
+					}
+					msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
+					break;
+			}
+		}
 	}
-	else if (strncmp(argv[1], "adaptive", 8) == 0) {
-
-		cx_fabric_param(intf, direction, 2, value);
-
+	for( j = 0 ; j < spec_count ; j++ ) {
+		msg_data[data_pos++] = spec[j]->spec;
+		switch( spec[j]->val_type ) {
+			case Cx_Fabric_Arg_Value_Scalar:
+				for( i = 0 ; i < spec_value[j].val_len ; i++ ) {
+					msg_data[data_pos++] = spec_value[j].val.scalar[i];
+				}
+				msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
+				break;
+			case Cx_Fabric_Arg_Value_String:
+				for( i = 0 ; i < spec_value[j].val_len ; i++ ) {
+					msg_data[data_pos++] = spec_value[j].val.string[i];
+				}
+				msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
+				break;
+			case Cx_Fabric_Arg_Value_IPV4_Address:
+				for( i = 0 ; i < spec_value[j].val_len ; i++ ) {
+					msg_data[data_pos++] = spec_value[j].val.ipv4_addr[i];
+				}
+				msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
+				break;
+			case Cx_Fabric_Arg_Value_MAC_Address:
+				for( i = 0 ; i < spec_value[j].val_len ; i++ ) {
+					msg_data[data_pos++] = spec_value[j].val.mac_addr[i];
+				}
+				msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
+				break;
+		}
 	}
-	else if (strncmp(argv[1], "jumbo", 6) == 0) {
 
-		cx_fabric_param(intf, direction, 4, value);
+	req.msg.data = msg_data;
+	req.msg.data_len = data_pos;
 
-	}
-	else {
-		cx_fabric_usage();
+	rsp = intf->sendrecv(intf, &req);
+	if (rsp == NULL) {
+		lprintf(LOG_ERR, "Error during fabric command\n");
 		return -1;
 	}
 
-	return rv;
+	if( rsp->ccode == 0 ) {
+		if( cmd->ipmi_cmd == IPMI_CMD_OEM_FABRIC_GET ) {
+			memcpy( param_value.val.scalar, rsp->data, param->val_len );
+			param->printer( &param_value, param->val_len );
+		}
+	} 
+	else {
+		lprintf(LOG_ERR, "Command failed: %s",
+			val2str(rsp->ccode, completion_code_vals));
+		return -1;
+	}
+
+	return 0;
+	
+cx_fabric_main_error_out:
+//	cx_fabric_usage();
+	return -1;
+}
+
+int
+cx_fabric_main(struct ipmi_intf * intf, int argc, char ** argv)
+{
+	if(( argc > 1 ) && ( !strcmp( "config", argv[0] ))) {
+		cx_fabric_cmd_parser( intf, cx_fabric_config_arg, argc-1, &argv[1] );
+	}
+	else {
+		cx_fabric_cmd_parser( intf, cx_fabric_main_arg, argc, &argv[0] );
+	}
 }
 
 static void
 cx_data_usage(void)
 {
 	lprintf(LOG_NOTICE,
-	"\n"
-	"Usage: ipmitool cxoem data <type> <command> [option...]\n"
-	"\n"
-	"Data Commands: \n"
-	"\n"
-	"  mem  <read/write> <width>  <address> [data] \n"
-	"  cdb  <read/write> <length> <cid>     [data] \n"
+		"\n"
+		"Usage: ipmitool cxoem data <type> <command> [option...]\n"
+		"\n"
+		"Data Commands: \n"
+		"\n"
+		"  mem  <read/write> <width>  <address> [fmt] [data] \n"
+		"  cdb  <read/write> <length> <cid> [fmt] [data] \n"
+		"where fmt is an optional formatting hint, one of,\n"
+		"    'int' -- decimal integer\n"
+		"    'uint' -- unsigned decimal integer\n"
+		"    'xint' -- a hexadecimal integer\n"
+		"    'ascii' -- an ascii string\n"
+		"    'xstr' -- a byte string expressed in hex (i.e. 01ef23)\n"
 	"\n");
 }
 
+static void
+cx_info_usage(void)
+{
+	lprintf(LOG_NOTICE,
+		"\n"
+		"Usage: ipmitool cxoem info <Type>\n"
+		"\n"
+		"Type Commands: \n"
+		"\n"
+		"  basic \n"
+		"  partnum \n"
+		"  chassis \n"
+		"  node \n"
+	"\n");
+}
+
+/* Interpret the string pointed to by valrep according to the length contraint
+   and the claimed format.  Put the result byte-by-byte into the out array.
+   Use the fmt parameter to decide whether to make integer values
+   little-endian (ints are encoded little-endian).
+*/
+static int
+asc_to_bin(const char *valrep, int length, int fmt, unsigned char *out)
+{
+	int i;
+	unsigned int intval = 0;
+	memset(out, 0, length);
+	// the string types (ascii and xstr) are easy: they just get stuffed
+	// into the output, byte-for-byte
+	if (fmt == CX_DATA_FMT_ASCII) {
+		for (i = 0; i < length && valrep[i]; i++)
+			out[i] = (unsigned int)valrep[i];
+	}
+	else if (fmt == CX_DATA_FMT_XSTR) {
+		int vallen = strlen(valrep);
+		if (vallen & 1) { // input can't have an odd number of chars
+			lprintf(LOG_ERR, "<value> must have an even number of hex digits\n"); 
+			return CX_DATA_BAD_VALUE;	
+		}
+		if (vallen < (2 * length)) {
+			lprintf(LOG_ERR, "<value> must have enough characters "
+				"to encode <length> bytes.\n");
+			return CX_DATA_BAD_VALUE;
+		}
+		for (i=0;  i < length && valrep[i*2]; i++) {
+			char byterep[3];
+			int j = 2 * i;
+			byterep[0] = valrep[j];
+			byterep[1] = valrep[j+1];
+			byterep[2] = 0;
+			out[i] = strtoul(byterep, NULL, 16);
+			if (errno) {
+				lprintf(LOG_ERR,
+					"<value> is not a valid hex string\n");
+				return CX_DATA_BAD_VALUE;
+			}
+		}
+	}
+	// For the integer types we have to get the value, then
+	// pack the out buffer little-endian.  Fortunately, this is the
+	// same for memory locations and cdb values, so all we have to
+	// worry about is length, which is guaranteed to be 1 or 4.
+	else {
+		if (length < 1 || length > 4) {
+			lprintf(LOG_ERR, "<width> must be either 1 or 4\n");
+			return CX_DATA_BAD_LENGTH;
+		}
+		if (fmt == CX_DATA_FMT_INT) {
+			intval = (unsigned int)strtol(valrep, NULL, 10);
+		}
+		else if (fmt == CX_DATA_FMT_UINT) {
+			intval = strtoul(valrep, NULL, 10);
+		}
+		else if (fmt == CX_DATA_FMT_XINT) {
+			intval = strtoul(valrep, NULL, 16);
+		}
+		if (errno) {
+			lprintf(LOG_ERR,
+				"<value> is not a valid integer value.\n");
+			return CX_DATA_BAD_VALUE;
+		}
+		out[0] = intval & 0xff;
+		if (length == 4) {
+			out[1] = (intval >> 8) & 0xff;
+			out[2] = (intval >> 16) & 0xff;
+			out[3] = (intval >> 24) & 0xff;
+		}
+	}
+	return CX_DATA_OK;
+}
+
+/*
+  Print a value or a series of values according to the specified format.
+  This function can present one or more ints or bytes.  Ints are space-
+  separated.  Bytes are not separated.
+*/
+static int
+print_value(int length, int format, const unsigned char *value)
+{
+	int rc = CX_DATA_OK;
+	int datatype = CX_DATA_INT_TYPE;
+	char *prntfmt = "0x%08x";
+	printf("Value    :");
+	if (length > 0) {
+		switch (format) {
+		case CX_DATA_FMT_INT:
+			datatype = CX_DATA_INT_TYPE;
+			prntfmt = " %d";
+			break;
+		case CX_DATA_FMT_UINT:
+			datatype = CX_DATA_INT_TYPE;
+			prntfmt = " %u";
+			break;
+		case CX_DATA_FMT_XINT:
+			datatype = CX_DATA_INT_TYPE;
+			prntfmt = " 0x%08x";
+			break;
+		case CX_DATA_FMT_ASCII:
+			datatype = CX_DATA_BYTE_TYPE;
+			prntfmt = "%c";
+			break;
+		case CX_DATA_FMT_XSTR:
+			datatype = CX_DATA_BYTE_TYPE;
+			prntfmt = "%02x";
+			break;
+		} // switch
+		if (datatype == CX_DATA_INT_TYPE) { // integer
+			int i;
+			if (length == 1) {
+				printf(prntfmt, value[0]);
+			}
+			else {
+				for (i = 0; (4 * i) + 3 < length; i++) {
+					int n = i * 4;
+					unsigned int iv;
+					iv = ((unsigned int)value[n+3] << 24) +
+					     ((unsigned int)value[n+2]<< 16) +
+					     ((unsigned int)value[n+1] << 8) +
+					     (unsigned int)value[n];
+					printf(prntfmt, iv);
+				}
+			}
+		} 
+		else  { // string data
+			int i;
+			printf(" ");
+			for (i = 0; i < length; i++) {
+				printf(prntfmt, value[i]);
+			}
+		}
+		printf("\n");
+	} else {
+		rc = CX_DATA_BAD_LENGTH;
+	}
+	return rc;
+}
+
+/*  Execute commands to access the configuration data base
+        Initialize the ipmi message
+	Send the message
+        On a read:
+          print the value returned.
+*/
 int
 cx_data_cdb(struct ipmi_intf *intf, int access, int length,
-		        unsigned int cid, unsigned int value)
+	    unsigned int cid, unsigned int fmt, unsigned char *value)
 {
 	int    rc = CXOEM_SUCCESS;
 	struct ipmi_rs * rsp;
 	struct ipmi_rq   req;
-	uint8_t msg_data[16];
-
+	uint8_t msg_data[8 + MAX_RETURNABLE_CDB_LEN];
+	char out[5];
 	memset(&req, 0, sizeof(req));
 	memset(msg_data, 0, sizeof(msg_data));
-	req.msg.netfn    = IPMI_NETFN_CXOEM;
-	req.msg.cmd      = IPMI_CXOEM_DATA_ACCESS;
+	req.msg.netfn    = IPMI_NETFN_OEM_SS;
+	req.msg.cmd      = IPMI_CMD_OEM_DATA_ACCESS;
 	msg_data[0] = 2;      // 2 = cdb access
 	msg_data[1] = access; // direction, i.e. read/write
 	msg_data[2] = length & 0xff;
@@ -1252,12 +2070,9 @@ cx_data_cdb(struct ipmi_intf *intf, int access, int length,
 	msg_data[5] = (cid >> 8) & 0xff;
 	msg_data[6] = (cid >> 16) & 0xff;
 	msg_data[7] = (cid >> 24) & 0xff;
-	if (access > 1) {
-		msg_data[8] = value & 0xff;
-		msg_data[9] = (value >> 8) & 0xff;
-		msg_data[10] = (value >> 16) & 0xff;
-		msg_data[11] = (value >> 24) & 0xff;
-		req.msg.data_len = 12;
+	if (access == CX_DATA_ACCESS_WRITE) {
+		memcpy((void *)(msg_data + 8), (void *)value, length);
+		req.msg.data_len = length + 8;
 	}
 	else {
 		req.msg.data_len = 8;
@@ -1266,42 +2081,51 @@ cx_data_cdb(struct ipmi_intf *intf, int access, int length,
 
 	rsp = intf->sendrecv(intf, &req);
 	if (rsp == NULL) {
-		lprintf(LOG_ERR, "Error during fabric param command\n");
+		lprintf(LOG_ERR, "Error during cdb data command\n");
 		return -1;
 	}
-
+	
 	if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "Fabric param command failed: %s",
-					val2str(rsp->ccode, completion_code_vals));
+		lprintf(LOG_ERR, "cxoem data cdb command failed: %s",
+			val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
-
-	if ((rsp->ccode == 0) && (access == 1)) {
+	
+	if ((rsp->ccode == 0) && (access == CX_DATA_ACCESS_READ)) {
 		unsigned int value;
-		int length = 0;
-
-		length = rsp->data[0] & 0xff;
-		length |= (rsp->data[1] << 8) & 0xff;
-
-		if (length > 4) {
+		unsigned int dlength = 0;
+		unsigned int actual_length = 0;
+		int n = 2;
+		int datatype = 1;
+		const char *prntfmt = " %d";
+		
+		actual_length = rsp->data[0] & 0xff;
+		actual_length |= (rsp->data[1] << 8) & 0xff;
+		dlength = rsp->data[2] & 0xff;
+		dlength |= (rsp->data[3] << 8) & 0xff;
+		if (dlength > MAX_RETURNABLE_CDB_LEN) {
 			printf("CDB read length too lengthy\n");
 			return -1;
 		}
-
-		value = (unsigned int)(rsp->data[5] << 24);
-		value = (unsigned int)(rsp->data[4] << 16);
-		value = (unsigned int)(rsp->data[3] << 8);
-		value |= (unsigned int)rsp->data[2];
-		printf("Value    : %x\n", value);
-	} 
-
+		printf("Data size: %d\n", dlength);
+		printf("CID size :  %d\n", actual_length);
+		print_value(dlength, fmt, &rsp->data[4]);
+	}
 	return rc;
 }
 
 
+
+
+/*  Execute commands to access cxoem memory mapped registers
+       Initialize the msg
+       Send the msg
+       On a read:
+          print the value returned.
+ */
 int
 cx_data_mem(struct ipmi_intf *intf, int access, int width,
-		        unsigned int address, unsigned int value)
+	    unsigned int address, int fmt, const char * value)
 {
 	int    rc = CXOEM_SUCCESS;
 	struct ipmi_rs * rsp;
@@ -1310,20 +2134,22 @@ cx_data_mem(struct ipmi_intf *intf, int access, int width,
 
 	memset(&req, 0, sizeof(req));
 	memset(msg_data, 0, sizeof(msg_data));
-	req.msg.netfn    = IPMI_NETFN_CXOEM;
-	req.msg.cmd      = IPMI_CXOEM_DATA_ACCESS;
+	req.msg.netfn    = IPMI_NETFN_OEM_SS;
+	req.msg.cmd      = IPMI_CMD_OEM_DATA_ACCESS;
 	msg_data[0] = 1;      // 1 = memory access
-	msg_data[1] = access;
+	msg_data[1] = (access == CX_DATA_ACCESS_READ) ? 1 : 2;
 	msg_data[2] = width;
 	msg_data[3] = address & 0xff;
 	msg_data[4] = (address >> 8) & 0xff;
 	msg_data[5] = (address >> 16) & 0xff;
 	msg_data[6] = (address >> 24) & 0xff;
-	if (access > 1) {
-		msg_data[7] = value & 0xff;
-		msg_data[8] = (value >> 8) & 0xff;
-		msg_data[9] = (value >> 16) & 0xff;
-		msg_data[10] = (value >> 24) & 0xff;
+	if (access == CX_DATA_ACCESS_WRITE) {
+		msg_data[7] = value[0];
+		if (width > 1) {
+			msg_data[8] = value[1];
+			msg_data[9] = value[2];
+			msg_data[10] = value[3];
+		}
 		req.msg.data_len = 11;
 	}
 	else {
@@ -1333,162 +2159,469 @@ cx_data_mem(struct ipmi_intf *intf, int access, int width,
 
 	rsp = intf->sendrecv(intf, &req);
 	if (rsp == NULL) {
-		lprintf(LOG_ERR, "Error during fabric param command\n");
+		lprintf(LOG_ERR, "Error during cxoem data mem command\n");
 		return -1;
 	}
 
 	if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "Fabric param command failed: %s",
+		lprintf(LOG_ERR, "cxoem data mem command failed: %s",
 					val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
 
-	if ((rsp->ccode == 0) && (access == 1)) {
-		value = (unsigned int)(rsp->data[3] << 24);
-		value |= (unsigned int)(rsp->data[2] << 16);
-		value |= (unsigned int)(rsp->data[1] << 8);
-		value |= (unsigned int)rsp->data[0];
-		printf("Value    : %08x\n", value);
+	if ((rsp->ccode == 0) && (access == CX_DATA_ACCESS_READ)) {
+		print_value(width, fmt, rsp->data);
 	} 
 
 	return rc;
 }
 
+static int
+str_to_fmt(const char *fmtstr)
+{
+	struct _sftbl{
+		const char *fmtstr;
+		unsigned int fmt;
+	};
+	struct _sftbl sftbl[] = {
+		{"int", CX_DATA_FMT_INT},
+		{"uint", CX_DATA_FMT_UINT},
+		{"xint", CX_DATA_FMT_XINT},
+		{"ascii", CX_DATA_FMT_ASCII},
+		{"xstr", CX_DATA_FMT_XSTR},
+		{0, 0}
+	};
+	int i;
+	for (i = 0; sftbl[i].fmtstr; i++)
+		if (!strcmp(fmtstr, sftbl[i].fmtstr))
+			return sftbl[i].fmt;
+	lprintf(LOG_ERR,
+		"<fmt> isn't a valid format\n"
+		"It sould be one of 'int', 'uint',"
+		"'xint', 'ascii or 'xstr', or omitted.\n");
+	return CX_DATA_FMT_DEFAULT;
+}
 
-int
+/* For the cxoem data read/write mem n command,
+      edit the data length (n) -- we handle only byte and word access for mem
+      extract the address
+      for reads:
+         extract the optional formatting hint
+      for writes:
+         extract the optional formatting hint
+         extract the value to be written
+      access the memory
+ */
+static int
+cx_data_mem_main(struct ipmi_intf *intf, int argc, char ** argv,
+		 int access, int length)
+{
+	int ret = 0;
+	unsigned int addr;
+	int fmt = CX_DATA_FMT_DEFAULT;
+	const char *valptr = argv[4];
+
+	if (length != 1 && length != 4) {
+		lprintf(LOG_ERR,"<length> out of range\n");
+		return -1;
+	}
+	addr = strtoul(argv[3], (char **)NULL, 16);
+	unsigned char value[4];
+	if (!errno) {
+		printf("Addr     : %08x\n", addr);
+	}
+	else {
+		lprintf(LOG_ERR,"<addr> doesn't look like a valid value\n");
+		return -1;
+	}
+	
+	if (access == CX_DATA_ACCESS_READ && argc > 4) {
+		fmt = str_to_fmt(argv[4]);
+		if (fmt == CX_DATA_FMT_DEFAULT) {
+			return -1;
+		}
+	}
+	if (access == CX_DATA_ACCESS_WRITE) {
+		if (argc > 5) {
+			fmt = str_to_fmt(argv[4]);
+			valptr = argv[5];
+		}
+		else if (argc > 4) {
+			fmt = CX_DATA_FMT_XINT;
+			valptr = argv[4];
+		}
+		else {
+			lprintf(LOG_ERR, "<value> wasn't specified\n");
+			return -1;
+		}
+		if (fmt != CX_DATA_FMT_INT)
+			fmt = CX_DATA_FMT_XINT;
+		if (asc_to_bin(valptr, length, fmt, value) == CX_DATA_OK) {
+			print_value(length, fmt, value);
+		}
+		else {
+			return -1;
+		}
+	}
+	return cx_data_mem(intf, access, length, addr, fmt, value);
+    
+}
+
+/* For the cxoem data read/write mem n command,
+      Extract the CID (configuration id)
+      On a read:
+         extract the optional format hint.
+      On a write:
+         extract the optional format hint.
+         extract the data to be written
+      Access the cdb
+ */
+static int
+cx_data_cdb_main(struct ipmi_intf *intf, int argc,
+		 char ** argv, int access, int length)
+{
+	int width = 4;          // default to 4-bytes
+	unsigned int addr;
+	int fmt = CX_DATA_FMT_DEFAULT;
+	unsigned char value[MAX_RETURNABLE_CDB_LEN];
+	unsigned int cid = 0;
+	char *valptr = argv[4];
+
+	cid = strtoul(argv[3], (char **)NULL, 16);
+	if (!errno) {
+		printf("Cid      : %08x\n", cid);
+	}
+	else {
+		lprintf(LOG_ERR,"<cid> doesn't look like a valid value\n");
+		return -1;
+	}
+	
+	if (access == CX_DATA_ACCESS_READ && argc > 4) {
+		fmt = str_to_fmt(argv[4]);
+		if (fmt == CX_DATA_FMT_DEFAULT) {
+			return -1;
+		}
+	}
+	if (access == CX_DATA_ACCESS_WRITE) {
+		// at this point, we have either a value or a format and
+		// value left to parse from the cmdline.
+		if (argc > 5) {
+			fmt = str_to_fmt(argv[4]);
+			valptr = argv[5];
+		} 
+		else if (argc > 4) {
+			fmt = CX_DATA_FMT_XSTR;
+			valptr = argv[4];
+		}
+		else {
+			lprintf(LOG_ERR, "<value> wasn't specified\n");
+			return -1;
+		}
+		if (asc_to_bin(valptr, length, fmt, value) != CX_DATA_OK) {
+			return -1;
+		}
+		else {
+			print_value(length, fmt, value);
+		}
+	}
+	if (fmt == CX_DATA_FMT_DEFAULT)
+		fmt = CX_DATA_FMT_XSTR;
+	return cx_data_cdb(intf, access, length, cid, fmt, value);
+}
+
+static int
+get_access(int argc, char ** argv)
+{
+	int access = CX_DATA_ACCESS_UNKNOWN;
+	if (argc > 1) {
+		if (strncmp(argv[1], "read", 4) == 0)
+			access = CX_DATA_ACCESS_READ;
+		else if (strncmp(argv[1], "write", 4) == 0)
+			access = CX_DATA_ACCESS_WRITE;
+	}
+	return access;
+}
+
+/*  For the cxoem data command, extract the common fields:
+       target (cdb or memory)
+       access (read or write)
+       length of data
+    then call the appropriate handler for the target.
+*/
+static int
 cx_data_main(struct ipmi_intf * intf, int argc, char ** argv)
 {
 	int rv = 0;
+	int target = CX_DATA_TARGET_UNKNOWN;
+	int length = 0;
+	int maxwidth = 4;
 	int access;
-	int width = 4;          // default to 4-bytes
-	unsigned int addr;
-	unsigned int value = 0;
-
 	errno = 0;
 
 	if (argc < 1 || strncmp(argv[0], "help", 4) == 0) {
 		cx_data_usage();
 		return 0;
 	}
-
 	if (strncmp(argv[0], "mem", 3) == 0) {
-
-		if (strncmp(argv[1], "read", 4) == 0) {
-			if (argc != 4) {
-				cx_data_usage();
-				return 0;
-			}
-			access = 1;
-		}
-		else if (strncmp(argv[1], "write", 4) == 0) {
-			if (argc != 5) {
-				cx_data_usage();
-				return 0;
-			}
-			access = 2;
-		}
-		else {
-			cx_data_usage();
-			return -1;
-		}
-
-		width = strtol(argv[2], (char **)NULL, 10);
-		if (width < 1 || width > 4) {
-			fprintf(stderr,"<width> out of range\n");
-			return -1;
-		}
-		if (!errno) {
-			printf("Width    : %d\n", width);
-		}
-		else {
-			fprintf(stderr,"<width> doesn't look like a valid value\n");
-			return -1;
-		}
-		addr = strtoul(argv[3], (char **)NULL, 16);
-		if (!errno) {
-			printf("Addr     : %08x\n", addr);
-		}
-		else {
-			fprintf(stderr,"<addr> doesn't look like a valid value\n");
-			return -1;
-		}
-
-		if (access > 1) {
-			value = strtoul(argv[4], (char **)NULL, 16);
-			if (!errno) {
-				printf("Value    : %08x\n", value);
-			}
-			else {
-				fprintf(stderr,"<value> doesn't look like a valid value\n");
-				return -1;
-			}
-		}
-
-		cx_data_mem(intf, access, width, addr, value);
-
-	} else if (strncmp(argv[0], "cdb", 3) == 0) {
-
-		unsigned int cid = 0;
-		int length = 0;
-
-		if (strncmp(argv[1], "read", 4) == 0) {
-			if (argc != 4) {
-				cx_data_usage();
-				return 0;
-			}
-			access = 1;
-		}
-		else if (strncmp(argv[1], "write", 4) == 0) {
-			if (argc != 5) {
-				cx_data_usage();
-				return 0;
-			}
-			access = 2;
-		}
-		else {
-			cx_data_usage();
-			return -1;
-		}
-
-		length = strtol(argv[2], (char **)NULL, 10);
-		if (length < 1 || width > 4) {
-			fprintf(stderr,"<length> out of range\n");
-			return -1;
-		}
-		if (!errno) {
-			printf("Length   : %d\n", length);
-		}
-		else {
-			fprintf(stderr,"<length> doesn't look like a valid value\n");
-			return -1;
-		}
-		cid = strtoul(argv[3], (char **)NULL, 16);
-		if (!errno) {
-			printf("Cid      : %08x\n", cid);
-		}
-		else {
-			fprintf(stderr,"<cid> doesn't look like a valid value\n");
-			return -1;
-		}
-
-		if (access > 1) {
-			value = strtoul(argv[4], (char **)NULL, 16);
-			if (!errno) {
-				printf("Value    : %08x\n", value);
-			}
-			else {
-				fprintf(stderr,"<value> doesn't look like a valid value\n");
-				return -1;
-			}
-		}
-
-		cx_data_cdb(intf, access, length, cid, value);
-
-	} else {
+		target = CX_DATA_TARGET_MEM;
+	}
+	else if (strncmp(argv[0], "cdb", 3) == 0) {
+		target = CX_DATA_TARGET_CDB;
+		maxwidth = MAX_RETURNABLE_CDB_LEN;
+	}
+	else {
+		cx_data_usage();
+		rv =  -1;
+	}
+	access = get_access(argc, argv);
+	if ( (access == CX_DATA_ACCESS_READ && argc < 4) ||
+	     (access == CX_DATA_ACCESS_WRITE && argc < 5) ||
+	     access == CX_DATA_ACCESS_UNKNOWN) {
 		cx_data_usage();
 		return -1;
 	}
+				
+	length = strtol(argv[2], (char **)NULL, 10);
+	if (!errno) {
+		if (length < 1 || length > maxwidth) {
+			lprintf(LOG_ERR,"<length> out of range\n");
+			return -1;
+		}
+		else {
+			printf("Length   : %d\n", length);
+		}
+	}
+	else {
+		lprintf(LOG_ERR,"<length> doesn't look like a valid value\n");
+		return -1;
+	}
 
+
+	switch (target) {
+	case CX_DATA_TARGET_MEM:
+		rv = cx_data_mem_main(intf, argc, argv, access, length);
+		break;
+	case CX_DATA_TARGET_CDB:
+		rv = cx_data_cdb_main(intf, argc, argv, access, length);
+		break;
+	default:
+		cx_data_usage();
+		rv =  -1;
+	}
+
+	return rv;
+}
+
+#define MAX_MSG_DATA_SIZE 	256
+/**
+ * Generic Execute IPMI command
+ * 
+ * @param intf       IPMI Interface
+ *                   
+ * @param net_fn     Net Function
+ * @param command    Command to be send
+ * @param input_buf  Input Buffer that contains the data
+ * @param input_bufsize
+ *                   Input Buffer Size.  Must be less than or equal to 256
+ * @param output_buf IPMI Response will be stored here.
+ * @param output_bufsize
+ *                   Buffer size of the output_buffer, and on return it
+ *                   contains the actual number of bytes of data
+ * @param completion_code
+ *                   Command completion code
+ * 
+ * @return 0  = successful
+ *         -1 = failure
+ */
+int
+cx_send_ipmi_cmd(struct ipmi_intf *intf, 
+                 uint8_t net_fn, uint8_t command,
+                 uint8_t *input_buf, int input_bufsize,
+                 uint8_t *output_buf, int *output_bufsize, 
+				 uint8_t *completion_code)
+{
+	int    rc = CXOEM_SUCCESS;
+	struct ipmi_rs * rsp;
+	struct ipmi_rq   req;
+	uint8_t msg_data[MAX_MSG_DATA_SIZE];
+
+	memset(&req, 0, sizeof(req));
+	memset(msg_data, 0, sizeof(msg_data));
+	if (input_bufsize > MAX_MSG_DATA_SIZE) {
+		lprintf(LOG_ERR, "[cx_send_ipmi_cmd] message length exceeded.\n");
+		return -1;
+	}
+	req.msg.netfn    = net_fn;
+	req.msg.cmd      = command;
+	if (input_bufsize) {
+		if (input_buf) {
+			memcpy(msg_data, input_buf, input_bufsize);
+		}
+		else {
+			lprintf(LOG_ERR, "[cx_send_ipmi_cmd] Input buffer is null.\n");
+			rc = CXOEM_ERROR;
+		}
+	}
+	
+	if (CXOEM_SUCCESS == rc) {
+		req.msg.data = msg_data;
+		req.msg.data_len = input_bufsize;
+
+		rsp = intf->sendrecv(intf, &req);
+		if (rsp == NULL) {
+			lprintf(LOG_ERR, "[cx_send_ipmi_cmd] sendrecv failed.\n");
+			rc = CXOEM_ERROR;
+		}
+		else {
+			*completion_code = rsp->ccode;
+			if (rsp->data_len > *output_bufsize) {
+				lprintf(LOG_ERR, "[cx_send_ipmi_cmd] output buffer size is too small: (%d, %d).\n", *output_bufsize, rsp->data_len);
+				rc = CXOEM_ERROR;
+			}
+			else {
+				*output_bufsize = rsp->data_len;
+				if (rsp->data_len) {
+					if (output_buf) {
+						memcpy (output_buf, rsp->data, rsp->data_len);
+					}
+					else {
+						lprintf(LOG_ERR, "[cx_send_ipmi_cmd] output buffer is null.\n");
+						rc = CXOEM_ERROR;
+					}
+				}
+			}
+
+		}
+	}
+
+	return rc;
+}
+
+/**
+ * Ping the "BMC" to see if this is Calxeda SoC
+ * 
+ * @param intf     IPMI interface
+ * @param to_print TRUE to print the result
+ *                 FALSE not to print the result
+ * 
+ * @return TRUE if this is Calxeda SoC
+ *         FALSE otherwise.
+ */
+tboolean cx_is_CalxedaSoc(struct ipmi_intf *intf, tboolean to_print)
+{
+	struct oem_device_info_basic_s {
+		uint32_t	iana;
+		uint8_t		parameter_revision;
+		uint8_t 	major_ver;
+		uint8_t 	minor_ver;
+		uint8_t 	revision;
+		uint32_t	build_number;
+		uint32_t	timestamp;
+	} __attribute__ ((packed));
+	typedef struct oem_device_info_basic_s oem_device_info_basic_t;
+
+	tboolean is_Calxeda_soc = 0;		/* Assuming it's not Calxeda */
+	int rv = 0;
+	uint8_t rs_data[MAX_MSG_DATA_SIZE];
+	int     rs_data_size = MAX_MSG_DATA_SIZE;
+	uint8_t completion_code;
+	oem_device_info_basic_t *basic_rs;
+	
+	basic_rs = (void *) rs_data;
+
+	rs_data[0] = 0x01;		/* Basic Info */
+	rv = cx_send_ipmi_cmd(intf, IPMI_NETFN_OEM_SS, IPMI_CMD_OEM_GET_DEVICE_INFO, 
+						  rs_data, 1, rs_data, &rs_data_size, &completion_code);
+	if (rv == 0) {
+		if (completion_code) {
+			printf("command failed with 0x%X completion code\n", completion_code & 0xFF);
+		}
+		else
+		{
+			time_t	lt;
+			if (0x96CD == basic_rs->iana) {
+				is_Calxeda_soc = 1;
+				if (to_print) {
+					printf("Calxeda SoC (0x%6.6X)\n", basic_rs->iana);
+					printf("  Version: %d.%d.%d\n", basic_rs->major_ver, basic_rs->minor_ver, basic_rs->revision);
+					printf("  Build Number: %X %s\n", basic_rs->build_number,
+						   ((basic_rs->build_number & 0x0F) == 0x0D)? "(Dirty)" : "");
+					lt = basic_rs->timestamp;
+					printf("  Timestamp (%d): %s\n", basic_rs->timestamp, 
+                           asctime(localtime(&lt)));
+				}
+			}
+			else {
+				printf("This is not Calxeda SoC\n");
+			}
+		}
+	}
+	return is_Calxeda_soc;
+}
+
+/*  For the cxoem info command, extract the common fields:
+    then call the appropriate handler for the target.
+*/
+static int
+cx_info_main(struct ipmi_intf * intf, int argc, char ** argv)
+{
+	
+	int rv = -1;	// Assuming error
+	uint8_t rs_data[MAX_MSG_DATA_SIZE];
+	int     rs_data_size = MAX_MSG_DATA_SIZE;
+	uint8_t completion_code;
+
+	if (argc < 1 || strncmp(argv[0], "help", 4) == 0) {
+		cx_info_usage();
+		return 0;
+	}
+	if (strncmp(argv[0], "basic", 5) == 0) {
+		if (cx_is_CalxedaSoc(intf, TRUE)) {
+			rv = 0;
+		}
+	}
+	else if (strncmp(argv[0], "partnum", 7) == 0) {
+		if (cx_is_CalxedaSoc(intf, FALSE)) {
+		}
+	}
+	else if (strncmp(argv[0], "chassis", 7) == 0) {
+		if (cx_is_CalxedaSoc(intf, FALSE)) {
+		}
+	}
+	else if (strncmp(argv[0], "node", 4) == 0) {
+		struct oem_device_info_node_s {
+			uint8_t		oui[3];
+			uint16_t	fabric_node_id;
+			uint8_t		slot_number;
+			uint8_t		local_node_id;
+		} __attribute__ ((packed));
+		typedef struct oem_device_info_node_s oem_device_info_node_t;
+		
+		oem_device_info_node_t *node_rs;
+		node_rs = (void *) rs_data;
+		
+		if (cx_is_CalxedaSoc(intf, FALSE)) {
+			rs_data[0] = 0x04;		/* Node Info */
+			rv = cx_send_ipmi_cmd(intf, IPMI_NETFN_OEM_SS, IPMI_CMD_OEM_GET_DEVICE_INFO, 
+								  rs_data, 1, rs_data, &rs_data_size, &completion_code);
+			if (rv == 0) {
+				if (completion_code) {
+					printf("command failed with 0x%X completion code\n", completion_code & 0xFF);
+					rv = -1;
+				}
+				else
+				{
+					printf("OUI = 0x%X%X%X\n", node_rs->oui[2], node_rs->oui[1], node_rs->oui[0]);
+					printf("Fabric Node ID = %d\n", node_rs->fabric_node_id);
+					printf("Slot Number = %d\n", node_rs->slot_number);
+					printf("Local Node ID = %d\n", node_rs->local_node_id);
+				}
+			}
+		}
+	}
+	else {
+		cx_info_usage();
+	}
 	return rv;
 }
 
@@ -1512,6 +2645,10 @@ ipmi_cxoem_main(struct ipmi_intf * intf, int argc, char ** argv)
 	else if (!strncmp(argv[0], "data", 4))
 	{
 		cx_data_main(intf, argc-1, &argv[1]);
+	}
+	else if (!strncmp(argv[0], "info", 4))
+	{
+		cx_info_main(intf, argc-1, &argv[1]);
 	}
 
 	return rc;

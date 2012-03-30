@@ -67,6 +67,7 @@
 #include <ipmitool/ipmi_pef.h>
 #include <ipmitool/ipmi_oem.h>
 #include <ipmitool/ipmi_ekanalyzer.h>
+#include <ipmitool/ipmi_cxoem.h>
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
@@ -212,7 +213,7 @@ ipmi_cmd_run(struct ipmi_intf * intf, char * name, int argc, char ** argv)
 static void
 ipmi_option_usage(const char * progname, struct ipmi_cmd * cmdlist, struct ipmi_intf_support * intflist)
 {
-	lprintf(LOG_NOTICE, "%s version %s\n", progname, VERSION);
+	lprintf(LOG_NOTICE, "%s version %s%s\n", progname, VERSION, CX_VERSION);
 	lprintf(LOG_NOTICE, "usage: %s [options...] <command>\n", progname);
 	lprintf(LOG_NOTICE, "       -h             This help");
 	lprintf(LOG_NOTICE, "       -V             Show version information");
@@ -392,8 +393,7 @@ ipmi_main(int argc, char ** argv,
 			goto out_free;
 			break;
 		case 'V':
-			printf("%s version %s\n", progname, VERSION);
-			printf("   Calxeda, Inc., 0.0.1\n");
+			printf("%s version %s%s\n", progname, VERSION, CX_VERSION);
 			rc = 0;
 			goto out_free;
 			break;
