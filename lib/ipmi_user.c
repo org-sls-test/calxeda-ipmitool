@@ -311,7 +311,7 @@ ipmi_user_set_username(
 	struct ipmi_rs	     * rsp;
 	struct ipmi_rq	       req;
 	uint8_t	       msg_data[17];
-
+    uint8_t size;
 	memset(&req, 0, sizeof(req));
 	req.msg.netfn    = IPMI_NETFN_APP;	     /* 0x06 */
 	req.msg.cmd	     = IPMI_SET_USER_NAME;   /* 0x45 */
@@ -321,8 +321,15 @@ ipmi_user_set_username(
 
 	/* The channel number will remain constant throughout this function */
 	msg_data[0] = user_id;
+	if(strlen(name)>16)
+		{
+		lprintf(LOG_ERR, "User name is too long max lenght is 16 char");
+		return -1;
+		}
 	memset(msg_data + 1, 0, 16);
-	strncpy((char *)(msg_data + 1), name, 16);
+	if(strlen(name)>16)lprintf(LOG_ERR, "The username feild is too long max size is 16");
+	size =(strlen(name)>16)? 16:(strlen(name));
+	memcpy((char *)(msg_data + 1), name,size);
 
 	rsp = intf->sendrecv(intf, &req);
 

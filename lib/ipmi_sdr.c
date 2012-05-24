@@ -1828,7 +1828,7 @@ ipmi_sdr_print_sensor_compact(struct ipmi_intf *intf,
 				printf("ns  | %2d.%1d | ",
 				       sensor->entity.id,
 				       sensor->entity.instance);
-				if (IS_SCANNING_DISABLED(rsp->data[1]))
+				if ( (rsp != 0) && IS_SCANNING_DISABLED(rsp->data[1]))
 					printf("Disabled");
 				else
 					printf("No Reading");

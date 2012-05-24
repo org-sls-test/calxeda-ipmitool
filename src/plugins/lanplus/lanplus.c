@@ -734,7 +734,7 @@ ipmi_lan_poll_recv(struct ipmi_intf * intf)
       				ipmi_req_remove_entry(rsp->payload.ipmi_response.rq_seq,
 								rsp->payload.ipmi_response.cmd);
                   ipmi_lan_poll_recv(intf);
-                  return;
+                  return NULL;
 					}
 					else
 					{		

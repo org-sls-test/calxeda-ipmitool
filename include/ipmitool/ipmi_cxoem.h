@@ -62,8 +62,9 @@
 #define IPMI_CMD_OEM_FABRIC_CONFIG_SET				0xE7
 #define IPMI_CMD_OEM_FABRIC_UPDATE_CONFIG           0xE8
 #define IPMI_CMD_OEM_FW_RESET                       0xE9
-#define IPMI_CMD_OEM_FABRIC_MCAM                    0xEA
-#define IPMI_CMD_OEM_DATA_ACCESS                    0xEB
+#define IPMI_CMD_OEM_DATA_ACCESS                    0xEA
+#define IPMI_CMD_OEM_FABRIC_ADD						0xEB
+#define IPMI_CMD_OEM_FABRIC_RM						0xEC
 
 #define IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR        0x1
 #define IPMI_CMD_OEM_FABRIC_PARAMETER_NETMASK       0x2

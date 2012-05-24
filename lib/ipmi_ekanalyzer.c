@@ -3025,9 +3025,10 @@ ipmi_ek_display_address_table_record( struct ipmi_ek_multi_header * record )
 
    for ( i = 0; i < entries; i++ ){
       printf("\tHWAddr: 0x%02x  - SiteNum: 0x%02x - SiteType: 0x%02x \n",
-               record->data[offset++],
-               record->data[offset++],
-               record->data[offset++]);
+               record->data[offset+0],
+               record->data[offset+1],
+               record->data[offset+2]);
+	  offset = offset + 3;
    }
 }
 
@@ -3148,21 +3149,26 @@ ipmi_ek_display_shelf_ip_connection_record(
    int offset = START_DATA_OFFSET;
    if (offset > record->header.len){
       printf("   Shelf Manager IP Address: %d.%d.%d.%d\n",
-            record->data[offset++], record->data[offset++],
-            record->data[offset++], record->data[offset++]
+            record->data[offset+0], record->data[offset+1],
+            record->data[offset+2], record->data[offset+3]
          );
+	  offset = offset + 4;
    }
    if (offset > record->header.len){
       printf("   Default Gateway Address: %d.%d.%d.%d\n",
-            record->data[offset++], record->data[offset++],
-            record->data[offset++], record->data[offset++]
-         );
+				record->data[offset+0], record->data[offset+1],
+				record->data[offset+2], record->data[offset+3]
+			 );
+	  offset = offset + 4;
+
    }
    if (offset > record->header.len){
-      printf("   Subnet Mask: %d.%d.%d.%d\n", record->data[offset++],
-            record->data[offset++], record->data[offset++],
-            record->data[offset++]
-         );
+      printf("   Subnet Mask: %d.%d.%d.%d\n", 
+				record->data[offset+0], record->data[offset+1],
+				record->data[offset+2], record->data[offset+3]
+			 );
+	  offset = offset + 4;
+
    }
 }
 

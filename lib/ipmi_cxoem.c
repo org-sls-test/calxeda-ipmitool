@@ -157,9 +157,9 @@ cx_fabric_usage(void)
 	"\n"
 	"Fabric Config Commands: \n"
 	"\n"
-	"  set|get ipinfo tftp <tftp_server_addr:port> file <filename>\n" 
+	"  set|get ipinfo tftp <tftp_server_addr> port <tftp_server_port> file <filename>\n" 
 	"  set|get ipsrc\n" 
-	"  set|get macaddrs tftp <tftp_server_addr:port> file <filename>\n" 
+	"  set|get macaddrs tftp <tftp_server_addr> port <tftp_server_port> file <filename>\n" 
 	"  set|get mtu <standard|jumbo>\n" 
 	"  set|get uplink_mode <mode>\n" 
 	"    where mode is:\n"
@@ -168,7 +168,7 @@ cx_fabric_usage(void)
 	"      2 - managment and eth0 interfaces go to Uplink0, eth1 interfaces go to Uplink1\n"
 	"  update_config\n"
 	"\n"
-	"Ex: ipmitool cxoem fabric config get ipinfo tftp 10.1.1.1:69 file ipinfo.out\n"
+	"Ex: ipmitool cxoem fabric config get ipinfo tftp 10.1.1.1 port 69 file ipinfo.out\n"
 	"\n");
 }
 
@@ -446,7 +446,7 @@ cx_fw_info(struct ipmi_intf *intf, int slot)
 
 	printf("\n");
 	for (i = 0; i < (s->count / sizeof(img_info_t)); i++) {
-		printf("%-18s : %02x\n", "Slot", ii[i].id);
+		printf("%-18s : %02d\n", "Slot", ii[i].id);
 		printf("%-18s : %02x (%s)\n", "Type", ii[i].type,
 				val2str(ii[i].type, cx_ptypes));
 		printf("%-18s : %08x\n", "Offset", ii[i].img_addr);
@@ -1140,6 +1140,34 @@ cx_fabric_cmd_t set_cmd = {
 	}
 };
 
+cx_fabric_cmd_t add_cmd = {
+	"add",
+	IPMI_CMD_OEM_FABRIC_ADD,
+	1, 1,
+	{ 	IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR, 0, 0, 0, 0 
+	},
+	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0
+	},
+	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0 
+	}
+};
+
+cx_fabric_cmd_t rm_cmd = {
+	"rm",
+	IPMI_CMD_OEM_FABRIC_RM,
+	1, 1,
+	{ 	IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR, 0, 0, 0, 0 
+	},
+	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0
+	},
+	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0 
+	}
+};
+
 #define MAC_ADDRESS_SIZE    6
 typedef uint8_t mac_address_t[MAC_ADDRESS_SIZE];
 
@@ -1282,6 +1310,8 @@ cx_fabric_spec_t interface_spec = {
 cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{ "get", Cx_Fabric_Arg_Command, (void *)&get_cmd },
 	{ "set", Cx_Fabric_Arg_Command, (void *)&set_cmd },
+	{ "add", Cx_Fabric_Arg_Command, (void *)&add_cmd },
+	{ "rm", Cx_Fabric_Arg_Command, (void *)&rm_cmd },
 	{ "update_config", Cx_Fabric_Arg_Command, (void *)&update_cmd },
 	{ "ipaddr", Cx_Fabric_Arg_Parameter, (void *)&ipaddr_param },
 	{ "ipsrc", Cx_Fabric_Arg_Parameter, (void *)&ipsrc_param },
@@ -1558,6 +1588,11 @@ cx_fabric_get_value(
 				(int *)&value->val.mac_addr[2], (int *)&value->val.mac_addr[3],
 				(int *)&value->val.mac_addr[4], (int *)&value->val.mac_addr[5]);
 			value->val_len = 6;
+			fprintf(stdout, "ADDR = %02x:%02x:%02x:%02x:%02x:%02x\n",
+				value->val.mac_addr[0], value->val.mac_addr[1],
+				value->val.mac_addr[2], value->val.mac_addr[3],
+				value->val.mac_addr[4], value->val.mac_addr[5]);
+				
 			break;
 		default:
 			return -1;

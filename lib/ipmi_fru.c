@@ -1840,7 +1840,8 @@ static void ipmi_fru_picmg_ext_print(uint8_t * fru_data, int off, int length)
 
 			for (i=0; i<entries; i++) {
 				printf("			 HWAddr: 0x%02x  - SiteNum: 0x%02x - SiteType: 0x%02x \n",
-					 fru_data[offset++], fru_data[offset++], fru_data[offset++]);
+					 fru_data[offset+0], fru_data[offset+1], fru_data[offset+2]);
+				offset = offset + 3;
 			}
 		}
 			break;
