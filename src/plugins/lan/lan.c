@@ -890,8 +890,17 @@ ipmi_lan_send_cmd(struct ipmi_intf * intf, struct ipmi_rq * req)
 		usleep(100);
 
 		rsp = ipmi_lan_poll_recv(intf);
-		if (rsp)
+		if (rsp) {
+			/*
+			 * ignore responses to other commands; for example,
+			 * commands that were retried multiple times and
+			 * genreated multiple responses that we are no longer
+			 * looking for.
+			 */
+			if (rsp->payload.ipmi_response.cmd != req->msg.cmd)
+				continue;
 			break;
+		}
 
 		usleep(5000);
 		if (++try >= intf->session->retry) {
