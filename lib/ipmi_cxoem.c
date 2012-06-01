@@ -124,7 +124,7 @@ cx_fw_usage(void)
 	"  upload     <slot> <filename> <type> <tftp ip[:port]>\n"
 	"  activate   <slot>\n"
 	"  invalidate <slot>\n"
-        "  makenext   <slot>\n"
+	"  makenext   <slot>\n"
 	"  flags       <slot> <flags> \n"
 	"  status     <job id>      - returns status of the transfer by <job id>\n"
 	"  check      <slot>        - force a crc check\n"
@@ -415,7 +415,9 @@ cx_fw_info(struct ipmi_intf *intf, int slot)
 	uint8_t msg_data[64];
 	int i;
 	struct cx_fw_info_rs *s;
-	img_info_t *ii;
+	int count;
+	img_info_t ii[20];
+	simg_header_t header;
 
 	memset(&req, 0, sizeof(req));
 	memset(msg_data, 0, 64);
@@ -442,16 +444,59 @@ cx_fw_info(struct ipmi_intf *intf, int slot)
 		return -1;
 
 	s = (struct cx_fw_info_rs *)&rsp->data[0];
-	ii = &s->img_info;
+	count = s->count / sizeof(img_info_t);
+	memcpy(ii, &s->img_info, count * sizeof(img_info_t));
 
 	printf("\n");
-	for (i = 0; i < (s->count / sizeof(img_info_t)); i++) {
+	for (i = 0; i < count; i++) {
+		if (cx_fw_get_simg_header(intf, i, &header)) {
+			return -1;
+		}
+		
 		printf("%-18s : %02d\n", "Slot", ii[i].id);
 		printf("%-18s : %02x (%s)\n", "Type", ii[i].type,
 				val2str(ii[i].type, cx_ptypes));
 		printf("%-18s : %08x\n", "Offset", ii[i].img_addr);
 		printf("%-18s : %08x\n", "Size", ii[i].img_size);
-		printf("%-18s : %08x\n\n", "Flags", ii[i].flags);
+		printf("%-18s : %08x\n", "Flags", ii[i].flags);
+		printf("%-18s : %08x\n", "Version", header.version);
+		printf("%-18s : %08x\n\n", "Daddr", header.daddr);
+	}
+
+	return rc;
+}
+
+
+int
+cx_fw_get_simg_header(struct ipmi_intf *intf, int slot, simg_header_t *header)
+{
+	int    rc = CXOEM_SUCCESS;
+	struct ipmi_rs * rsp;
+	struct ipmi_rq   req;
+	uint8_t msg_data[64];
+
+	memset(&req, 0, sizeof(req));
+	memset(msg_data, 0, 64);
+	req.msg.netfn    = IPMI_NETFN_OEM_SS;
+	req.msg.cmd      = IPMI_CMD_OEM_FW_GET_STATUS;
+	msg_data[0] = 0;
+	msg_data[1] = 3; // param 3 = get SIMG header
+	msg_data[2] = slot;
+	req.msg.data = msg_data;
+	req.msg.data_len = 3;
+
+	rsp = intf->sendrecv(intf, &req);
+	if (rsp == NULL) {
+		lprintf(LOG_ERR, "Error reading SIMG info\n");
+		return -1;
+	}
+
+	if (rsp->ccode == 0) {
+		memcpy(header, &rsp->data[1], sizeof(*header));
+	} else if (rsp->ccode > 0) {
+		lprintf(LOG_ERR, "SIMG read failed: %s",
+					val2str(rsp->ccode, completion_code_vals));
+		return -1;
 	}
 
 	return rc;
@@ -499,36 +544,13 @@ int
 cx_fw_get_flags(struct ipmi_intf *intf, int slot, unsigned int *flags)
 {
 	int    rc = CXOEM_SUCCESS;
-	struct ipmi_rs * rsp;
-	struct ipmi_rq   req;
-	uint8_t msg_data[64];
+	simg_header_t header;
 
-	memset(&req, 0, sizeof(req));
-	memset(msg_data, 0, 64);
-	req.msg.netfn    = IPMI_NETFN_OEM_SS;
-	req.msg.cmd      = IPMI_CMD_OEM_FW_GET_STATUS;
-	msg_data[0] = 0;
-	msg_data[1] = 3; // param 3 = get SIMG header
-	msg_data[2] = slot;
-	req.msg.data = msg_data;
-	req.msg.data_len = 3;
-
-	rsp = intf->sendrecv(intf, &req);
-	if (rsp == NULL) {
-		lprintf(LOG_ERR, "Error reading SIMG info\n");
+	if (cx_fw_get_simg_header(intf, slot, &header)) {
 		return -1;
 	}
 
-	if (rsp->ccode == 0) {
-		*flags = (unsigned int)rsp->data[21];
-		*flags |= (unsigned int)(rsp->data[22] << 8);
-		*flags |= (unsigned int)(rsp->data[23] << 16);
-		*flags |= (unsigned int)(rsp->data[24] << 24);
-	} else if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "SIMG read failed: %s",
-					val2str(rsp->ccode, completion_code_vals));
-		return -1;
-	}
+	*flags = header.flags;
 
 	return rc;
 }
@@ -2601,10 +2623,11 @@ static int
 cx_info_main(struct ipmi_intf * intf, int argc, char ** argv)
 {
 	
-	int rv = -1;	// Assuming error
+	int 	rv = -1;	// Assuming error
 	uint8_t rs_data[MAX_MSG_DATA_SIZE];
 	int     rs_data_size = MAX_MSG_DATA_SIZE;
 	uint8_t completion_code;
+	int		i;
 
 	if (argc < 1 || strncmp(argv[0], "help", 4) == 0) {
 		cx_info_usage();
@@ -2650,6 +2673,48 @@ cx_info_main(struct ipmi_intf * intf, int argc, char ** argv)
 					printf("Fabric Node ID = %d\n", node_rs->fabric_node_id);
 					printf("Slot Number = %d\n", node_rs->slot_number);
 					printf("Local Node ID = %d\n", node_rs->local_node_id);
+				}
+			}
+		}
+	}
+	else if (strncmp(argv[0], "wafer", 4) == 0) {
+		struct oem_device_info_wafer_s {
+			uint8_t		wafer_info[16];
+		} __attribute__ ((packed));
+		typedef struct oem_device_info_wafer_s oem_device_info_wafer_t;
+		
+		oem_device_info_wafer_t *wafer_rs;
+		wafer_rs = (void *) rs_data;
+		
+		if (cx_is_CalxedaSoc(intf, FALSE)) {
+			rs_data[0] = 0x05;		/* Wafer Info */
+			rv = cx_send_ipmi_cmd(intf, IPMI_NETFN_OEM_SS, IPMI_CMD_OEM_GET_DEVICE_INFO, 
+								  rs_data, 1, rs_data, &rs_data_size, &completion_code);
+			if (rv == 0) {
+				if (completion_code) {
+					printf("command failed with 0x%X completion code\n", completion_code & 0xFF);
+					rv = -1;
+				}
+				else
+				{
+					char wafer_string[16];
+					printf("Wafer Info\n");
+					printf("   Raw : ");
+					for (i = 0; i < sizeof(wafer_rs->wafer_info); i++) {
+						printf("%2.2X ", wafer_rs->wafer_info[i] & 0xFF);
+					}
+					printf("\n");
+					printf("   X-Coord	 : %d\n", wafer_rs->wafer_info[0] & 0xFF);
+					printf("   Y-Coord	 : %d\n", wafer_rs->wafer_info[1] & 0xFF);
+					printf("   Number 	 : %d\n", wafer_rs->wafer_info[2] & 0xFF);
+					memset(wafer_string, 0, 16);
+					/*
+					for (i = 0; i < 8; i++) {
+						wafer_string[i] = wafer_rs->wafer_info[10-i];
+					}
+					*/
+					memcpy(wafer_string, &(wafer_rs->wafer_info[3]), 8);
+					printf("   Lot Number: %s\n", wafer_string);
 				}
 			}
 		}

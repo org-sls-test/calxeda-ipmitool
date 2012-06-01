@@ -108,6 +108,17 @@ typedef struct img_info_s {
 	uint32_t flags;
 }__attribute__((packed)) img_info_t;
 
+typedef struct simg_header_s {
+	unsigned char magic[4];
+	uint16_t hdrfmt;
+	uint16_t version;
+	uint32_t imgoff;
+	uint32_t imglen;
+	uint32_t daddr;
+	uint32_t flags;
+	uint32_t crc32;
+}__attribute__((packed)) simg_header_t;
+
 struct cx_fw_info_rs {
 	unsigned char ver;      /* param version */
 	unsigned char count;	/* number of bytes */
