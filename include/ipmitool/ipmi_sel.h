@@ -295,6 +295,8 @@ static struct ipmi_event_sensor_types sensor_specific_types[] __attribute__((unu
 	{ 0x07, 0x08, 0xff, IPMI_EVENT_CLASS_DISCRETE, "Processor", "Disabled" },
 	{ 0x07, 0x09, 0xff, IPMI_EVENT_CLASS_DISCRETE, "Processor", "Terminator presence detected" },
 	{ 0x07, 0x0a, 0xff, IPMI_EVENT_CLASS_DISCRETE, "Processor", "Throttled" },
+	{ 0x07, 0x0b, 0xff, IPMI_EVENT_CLASS_DISCRETE, "Processor", "Uncorrectable Machine Check" },
+	{ 0x07, 0x0c, 0xff, IPMI_EVENT_CLASS_DISCRETE, "Processor", "Correctable Machine Check" },
 
 	{ 0x08, 0x00, 0xff, IPMI_EVENT_CLASS_DISCRETE, "Power Supply", "Presence detected" },
 	{ 0x08, 0x01, 0xff, IPMI_EVENT_CLASS_DISCRETE, "Power Supply", "Failure detected" },
