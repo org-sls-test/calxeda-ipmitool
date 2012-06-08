@@ -327,7 +327,9 @@ ipmi_user_set_username(
 		return -1;
 		}
 	memset(msg_data + 1, 0, 16);
-	if(strlen(name)>16)lprintf(LOG_ERR, "The username feild is too long max size is 16");
+	if (strlen(name)>16)
+		lprintf(LOG_ERR,
+			"The username field is too long max size is 16");
 	size =(strlen(name)>16)? 16:(strlen(name));
 	memcpy((char *)(msg_data + 1), name,size);
 

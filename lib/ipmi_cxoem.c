@@ -458,9 +458,13 @@ cx_fw_info(struct ipmi_intf *intf, int slot)
 				val2str(ii[i].type, cx_ptypes));
 		printf("%-18s : %08x\n", "Offset", ii[i].img_addr);
 		printf("%-18s : %08x\n", "Size", ii[i].img_size);
-		printf("%-18s : %08x\n", "Flags", ii[i].flags);
 		printf("%-18s : %08x\n", "Version", header.version);
-		printf("%-18s : %08x\n\n", "Daddr", header.daddr);
+		printf("%-18s : %08x\n", "Daddr", header.daddr);
+		printf("%-18s : %08x\n", "Flags", header.flags);
+		if (ii[i].in_use <= 1)
+			printf("%-18s : %u\n\n", "In Use", ii[i].in_use);
+		else
+			printf("%-18s : Unknown\n\n", "In Use");
 	}
 
 	return rc;
@@ -1418,7 +1422,7 @@ cx_fabric_param_t mtu_config_param = {
 
 cx_fabric_param_t uplink_mode_config_param = {
 	"uplink_mode",
-	IPMI_CMD_OEM_FABRIC_PARAMETER_MTU,
+	IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_MODE,
 	{ 	0, 0, 0, 0, 0 },
 	Cx_Fabric_Arg_Value_Scalar, 1,
 	cx_fabric_scalar_printer
@@ -1968,6 +1972,7 @@ static int
 asc_to_bin(const char *valrep, int length, int fmt, unsigned char *out)
 {
 	int i;
+	const char *p;
 	unsigned int intval = 0;
 	memset(out, 0, length);
 	// the string types (ascii and xstr) are easy: they just get stuffed
@@ -1987,11 +1992,15 @@ asc_to_bin(const char *valrep, int length, int fmt, unsigned char *out)
 				"to encode <length> bytes.\n");
 			return CX_DATA_BAD_VALUE;
 		}
-		for (i=0;  i < length && valrep[i*2]; i++) {
+		p = valrep;
+		if (strncmp(valrep, "0x", 2) == 0 ||
+		    strncmp(valrep, "0X", 2) == 0)
+			p += 2;
+		for (i = 0;  i < length && *p; i++) {
 			char byterep[3];
 			int j = 2 * i;
-			byterep[0] = valrep[j];
-			byterep[1] = valrep[j+1];
+			byterep[0] = *p++;
+			byterep[1] = *p++;
 			byterep[2] = 0;
 			out[i] = strtoul(byterep, NULL, 16);
 			if (errno) {
