@@ -1237,7 +1237,7 @@ void cx_fabric_string_printer( void *data, int len )
 	cx_fabric_value_t *val = (cx_fabric_value_t *)data;
 	int value = 0;
 
-	lprintf(LOG_NOTICE, "%s\n", val->val.string);
+	printf("%s\n", val->val.string);
 	return;
 }
 
@@ -1250,14 +1250,14 @@ void cx_fabric_scalar_printer( void *data, int len )
 	for( i = 0 ; i < len ; i++ ) {
 		value |= (val->val.scalar[i] << (8*i));
 	}
-	lprintf(LOG_NOTICE, "%d\n", value);
+	printf("%d\n", value);
 	return;
 }
 
 void cx_fabric_ipv4_printer( void *data, int len )
 {
 	cx_fabric_value_t *val = (cx_fabric_value_t *)data;
-	lprintf(LOG_NOTICE, "%d.%d.%d.%d\n", val->val.ipv4_addr[0], 
+	printf("%d.%d.%d.%d\n", val->val.ipv4_addr[0], 
 		val->val.ipv4_addr[1], val->val.ipv4_addr[2], val->val.ipv4_addr[3]);
 	return;
 }
@@ -1265,7 +1265,7 @@ void cx_fabric_ipv4_printer( void *data, int len )
 void cx_fabric_mac_printer( void *data, int len )
 {
 	cx_fabric_value_t *val = (cx_fabric_value_t *)data;
-	lprintf(LOG_NOTICE, "%02x:%02x:%02x:%02x:%02x:%02x\n", 
+	printf("%02x:%02x:%02x:%02x:%02x:%02x\n", 
 		val->val.mac_addr[0], val->val.mac_addr[1], val->val.mac_addr[2], 
 		val->val.mac_addr[3], val->val.mac_addr[4], val->val.mac_addr[5]);
 	return;
