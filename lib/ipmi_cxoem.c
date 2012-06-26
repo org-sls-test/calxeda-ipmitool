@@ -2287,8 +2287,8 @@ cx_data_mem_main(struct ipmi_intf *intf, int argc, char ** argv,
 	int fmt = CX_DATA_FMT_DEFAULT;
 	const char *valptr = argv[4];
 
-	if (length != 1 && length != 4) {
-		lprintf(LOG_ERR,"<length> out of range\n");
+	if (length < 1 || length > 64) {
+		lprintf(LOG_ERR,"<length> out of range. must be 1-64\n");
 		return -1;
 	}
 	addr = strtoul(argv[3], (char **)NULL, 16);
@@ -2420,7 +2420,7 @@ cx_data_main(struct ipmi_intf * intf, int argc, char ** argv)
 	int rv = 0;
 	int target = CX_DATA_TARGET_UNKNOWN;
 	int length = 0;
-	int maxwidth = 4;
+	int maxwidth = 64;
 	int access;
 	errno = 0;
 
