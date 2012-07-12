@@ -108,7 +108,7 @@ ipmi_cxoem_usage(void)
 	"\n"
 	"Commands: \n"
 	"\n"
-	"  fw fabric mac log data info\n");
+	"  fw fabric mac log data info feature\n");
 }
 
 static void
@@ -172,6 +172,20 @@ cx_fabric_usage(void)
 	"\n");
 }
 
+static void
+cx_feature_usage(void)
+{
+	lprintf(LOG_NOTICE,
+		"\n"
+		"Usage: ipmitool cxoem feature <status|enable|disable> <feature> \n"
+		"\n"
+		"Feature to Enable/Disable/Query are:\n"
+		"  selaging : SEL Aging or Circular SEL buffer\n"
+		"\n"
+		"Ex: ipmitool cxoem feature status selaging\n"
+		"Ex: ipmitool cxoem feature enable selaging\n"
+	"\n");
+}
 int cx_fw_download(struct ipmi_intf *intf, char *filename, int slot, int type,
 		           int ip1, int ip2, int ip3, int ip4, int port)
 {
@@ -2732,6 +2746,80 @@ cx_info_main(struct ipmi_intf * intf, int argc, char ** argv)
 	return rv;
 }
 
+static int
+cx_feature_main(struct ipmi_intf * intf, int argc, char ** argv)
+{
+	uint8_t rs_data[MAX_MSG_DATA_SIZE];
+	int     rs_data_size = MAX_MSG_DATA_SIZE;
+	int     rq_data_size = 0;
+	uint8_t *rq_data;
+	uint8_t completion_code;
+	int     get_op = 0;
+	const struct valstr oem_features[] = {
+		{ 0x01, "selaging"  },
+		{ 0x00, "Invalid" },	// make sure this is the last entry
+	};
+	int rv = 0;
+	int i;
+	int feature_index = 0;
+
+	if (argc < 2 || strncmp(argv[0], "help", 4) == 0) {
+		cx_feature_usage();
+		return 0;
+	}
+	
+	rq_data = rs_data;
+	if (strncmp(argv[0], "status", 6) == 0) {
+		rq_data_size = 2;
+		rq_data[0] = 2;		// Get Operation
+		get_op = 1;
+	}
+	else if (strncmp(argv[0], "enable", 6) == 0) {
+		rq_data[2] = 1;		// Enable
+		rq_data_size = 3;
+		rq_data[0] = 1;		// Set Operation
+	}
+	else if (strncmp(argv[0], "disable", 7) == 0) {
+		rq_data[2] = 0;		// Disable
+		rq_data_size = 3;
+		rq_data[0] = 1;		// Set Operation
+	}
+	else {
+		rv =  -1;
+	}
+	
+	if (0 == rv) {
+		i = 0;
+		rv = -1;	// Assuming the feature specified cannot be found
+		while (oem_features[i].val) {
+			if (strncmp(argv[1], oem_features[i].str, strlen(oem_features[i].str)) == 0) {
+				rq_data[1] = oem_features[i].val;
+				rv = 0;
+				feature_index = i;
+				break;
+			}
+		i++;
+		}
+	}
+	
+	
+	if (0 == rv) {
+		
+		rv = cx_send_ipmi_cmd(intf, IPMI_NETFN_OEM_SS, IPMI_CMD_OEM_FEATURES_ENABLE, 
+							  rq_data, rq_data_size, rs_data, &rs_data_size, &completion_code);
+		if (0 == rv) {
+			if (get_op) {
+				printf("   %s is %s\n", oem_features[feature_index].str, rs_data[0]? "enabled": "disabled");
+			}
+		}
+	}
+	
+	if (rv) {
+		cx_feature_usage();
+	}
+	
+	return rv;
+}
 int
 ipmi_cxoem_main(struct ipmi_intf * intf, int argc, char ** argv)
 {
@@ -2756,6 +2844,10 @@ ipmi_cxoem_main(struct ipmi_intf * intf, int argc, char ** argv)
 	else if (!strncmp(argv[0], "info", 4))
 	{
 		cx_info_main(intf, argc-1, &argv[1]);
+	}
+	else if (!strncmp(argv[0], "feature", 7))
+	{
+		cx_feature_main(intf, argc-1, &argv[1]);
 	}
 
 	return rc;
