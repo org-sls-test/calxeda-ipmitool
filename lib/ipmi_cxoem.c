@@ -181,9 +181,10 @@ cx_feature_usage(void)
 		"\n"
 		"Feature to Enable/Disable/Query are:\n"
 		"  selaging : SEL Aging or Circular SEL buffer\n"
+		"  hwwd : Hardware Watchdog\n"
 		"\n"
 		"Ex: ipmitool cxoem feature status selaging\n"
-		"Ex: ipmitool cxoem feature enable selaging\n"
+		"Ex: ipmitool cxoem feature enable hwwd\n"
 	"\n");
 }
 int cx_fw_download(struct ipmi_intf *intf, char *filename, int slot, int type,
@@ -2757,6 +2758,7 @@ cx_feature_main(struct ipmi_intf * intf, int argc, char ** argv)
 	int     get_op = 0;
 	const struct valstr oem_features[] = {
 		{ 0x01, "selaging"  },
+		{ 0x02, "hwwd"  },
 		{ 0x00, "Invalid" },	// make sure this is the last entry
 	};
 	int rv = 0;
