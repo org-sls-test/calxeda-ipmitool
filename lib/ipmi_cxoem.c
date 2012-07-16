@@ -1502,7 +1502,8 @@ cx_fabric_find_arg_type( cx_fabric_arg_t *arg_type_list, char *arg )
 	// First see if it is a standard type (Command, Parameter, Specifier)
 	i = 0; 
 	while( arg_type_list[i].keyword != NULL ) {
-		if( !strncasecmp(arg, arg_type_list[i].keyword, 
+		if(( strlen(arg) == strlen(arg_type_list[i].keyword )) &&
+				!strncasecmp(arg, arg_type_list[i].keyword, 
 				strlen(arg_type_list[i].keyword))) {
 			return arg_type_list[i].arg_type;
 		}
