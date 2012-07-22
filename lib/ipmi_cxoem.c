@@ -1943,7 +1943,8 @@ cx_fabric_cmd_parser(
 
 	if( rsp->ccode == 0 ) {
 		if(( cmd->ipmi_cmd == IPMI_CMD_OEM_FABRIC_GET ) ||
-				( cmd->ipmi_cmd == IPMI_CMD_OEM_FABRIC_CONFIG_GET )) {
+				(( cmd->ipmi_cmd == IPMI_CMD_OEM_FABRIC_CONFIG_GET ) &&
+				 ( param->val_len))) {
 			memcpy( param_value.val.scalar, rsp->data, param->val_len );
 			param->printer( &param_value, param->val_len );
 		}
