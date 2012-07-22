@@ -1154,11 +1154,12 @@ cx_fabric_cmd_t get_cmd = {
 		IPMI_CMD_OEM_FABRIC_PARAMETER_DEFGW, 
 		IPMI_CMD_OEM_FABRIC_PARAMETER_IPSRC, 
 		IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR,
-		IPMI_CMD_OEM_FABRIC_PARAMETER_NODEID 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_NODEID,
+		IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED 
 	},
 	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 
 		IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 
-		0, 0, 0 
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK, 0, 0 
 	},
 	{ 	0, 0, 0, 0, 0 
 	}
@@ -1172,10 +1173,11 @@ cx_fabric_cmd_t set_cmd = {
 		IPMI_CMD_OEM_FABRIC_PARAMETER_NETMASK, 
 		IPMI_CMD_OEM_FABRIC_PARAMETER_DEFGW, 
 		IPMI_CMD_OEM_FABRIC_PARAMETER_IPSRC, 
-		0 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED 
 	},
 	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 
-		IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK, 0, 0
 	},
 	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 0, 0, 0, 0 
 	}
@@ -1324,6 +1326,14 @@ cx_fabric_param_t nodeid_param = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_param_t linkspeed_param = {
+	"linkspeed",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
+	{ 0, 0, 0, 0, 0 },
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
 cx_fabric_param_t macaddr_param = {
 	"macaddr",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR,
@@ -1346,6 +1356,13 @@ cx_fabric_spec_t interface_spec = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_spec_t link_spec = {
+	"link",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
 cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{ "get", Cx_Fabric_Arg_Command, (void *)&get_cmd },
 	{ "set", Cx_Fabric_Arg_Command, (void *)&set_cmd },
@@ -1358,8 +1375,10 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{ "defgw", Cx_Fabric_Arg_Parameter, (void *)&defgw_param },
 	{ "macaddr", Cx_Fabric_Arg_Parameter, (void *)&macaddr_param },
 	{ "nodeid", Cx_Fabric_Arg_Parameter, (void *)&nodeid_param },
+	{ "linkspeed", Cx_Fabric_Arg_Parameter, (void *)&linkspeed_param },
 	{ "node", Cx_Fabric_Arg_Specifier, (void *)&node_spec },
 	{ "interface", Cx_Fabric_Arg_Specifier, (void *)&interface_spec },
+	{ "link", Cx_Fabric_Arg_Specifier, (void *)&link_spec },
 	{ NULL, Cx_Fabric_Arg_Invalid, (void *)NULL },
 };
 
@@ -1371,7 +1390,8 @@ cx_fabric_cmd_t config_get_cmd = {
 		IPMI_CMD_OEM_FABRIC_PARAMETER_IPSRC, 
 		IPMI_CMD_OEM_FABRIC_PARAMETER_MTU, 
 		IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_MODE, 
-		IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDRS 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDRS,
+		IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED
 	},
 	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP, 
 		IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT, 
@@ -1388,7 +1408,8 @@ cx_fabric_cmd_t config_set_cmd = {
 		IPMI_CMD_OEM_FABRIC_PARAMETER_IPSRC, 
 		IPMI_CMD_OEM_FABRIC_PARAMETER_MTU, 
 		IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_MODE, 
-		IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDRS 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDRS,
+		IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED
 	},
 	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP, 
 		IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT, 
@@ -1452,6 +1473,14 @@ cx_fabric_param_t macaddrs_config_param = {
 	NULL
 };
 
+cx_fabric_param_t linkspeed_config_param = {
+	"linkspeed",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
+	{ 	0, 0, 0, 0, 0 },
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
 cx_fabric_spec_t tftp_config_spec = {
 	"tftp",
 	IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
@@ -1483,6 +1512,7 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{ "uplink_mode", Cx_Fabric_Arg_Parameter, 
 		(void *)&uplink_mode_config_param },
 	{ "macaddrs", Cx_Fabric_Arg_Parameter, (void *)&macaddrs_config_param },
+	{ "linkspeed", Cx_Fabric_Arg_Parameter, (void *)&linkspeed_config_param },
 	{ "tftp", Cx_Fabric_Arg_Specifier, (void *)&tftp_config_spec },
 	{ "port", Cx_Fabric_Arg_Specifier, (void *)&port_config_spec },
 	{ "file", Cx_Fabric_Arg_Specifier, (void *)&file_config_spec },
@@ -1912,7 +1942,8 @@ cx_fabric_cmd_parser(
 	}
 
 	if( rsp->ccode == 0 ) {
-		if( cmd->ipmi_cmd == IPMI_CMD_OEM_FABRIC_GET ) {
+		if(( cmd->ipmi_cmd == IPMI_CMD_OEM_FABRIC_GET ) ||
+				( cmd->ipmi_cmd == IPMI_CMD_OEM_FABRIC_CONFIG_GET )) {
 			memcpy( param_value.val.scalar, rsp->data, param->val_len );
 			param->printer( &param_value, param->val_len );
 		}
