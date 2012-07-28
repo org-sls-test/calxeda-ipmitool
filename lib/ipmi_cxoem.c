@@ -1159,7 +1159,8 @@ cx_fabric_cmd_t get_cmd = {
 	},
 	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 
 		IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 
-		IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK, 0, 0 
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK, 
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE, 0 
 	},
 	{ 	0, 0, 0, 0, 0 
 	}
@@ -1177,9 +1178,10 @@ cx_fabric_cmd_t set_cmd = {
 	},
 	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 
 		IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 
-		IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK, 0, 0
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK, 
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE, 0
 	},
-	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 0, 0, 0, 0 
+	{ 	0, 0, 0, 0, 0 
 	}
 };
 
@@ -1363,6 +1365,13 @@ cx_fabric_spec_t link_spec = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_spec_t override_spec = {
+	"override",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE,
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
 cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{ "get", Cx_Fabric_Arg_Command, (void *)&get_cmd },
 	{ "set", Cx_Fabric_Arg_Command, (void *)&set_cmd },
@@ -1379,6 +1388,7 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{ "node", Cx_Fabric_Arg_Specifier, (void *)&node_spec },
 	{ "interface", Cx_Fabric_Arg_Specifier, (void *)&interface_spec },
 	{ "link", Cx_Fabric_Arg_Specifier, (void *)&link_spec },
+	{ "override", Cx_Fabric_Arg_Specifier, (void *)&override_spec },
 	{ NULL, Cx_Fabric_Arg_Invalid, (void *)NULL },
 };
 
@@ -1396,7 +1406,7 @@ cx_fabric_cmd_t config_get_cmd = {
 	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP, 
 		IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT, 
 		IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 
-		0, 0 },
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE, 0 },
 	{ 	0, 0, 0, 0, 0 }
 };
 
@@ -1414,7 +1424,7 @@ cx_fabric_cmd_t config_set_cmd = {
 	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP, 
 		IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT, 
 		IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 
-		0, 0 },
+		IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE, 0 },
 	{ 	0, 0, 0, 0, 0 }
 };
 
@@ -1516,6 +1526,7 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{ "tftp", Cx_Fabric_Arg_Specifier, (void *)&tftp_config_spec },
 	{ "port", Cx_Fabric_Arg_Specifier, (void *)&port_config_spec },
 	{ "file", Cx_Fabric_Arg_Specifier, (void *)&file_config_spec },
+	{ "override", Cx_Fabric_Arg_Specifier, (void *)&override_spec },
 	{ NULL, Cx_Fabric_Arg_Invalid, (void *)NULL },
 };
 
@@ -1752,28 +1763,37 @@ cx_fabric_cmd_parser(
 			}
 		}
 		else if( arg_type == Cx_Fabric_Arg_Specifier ) {
-			spec[spec_count] = cx_fabric_get_spec( args, 
-				argv[cur_arg] );
+			spec[spec_count] = cx_fabric_get_spec( args, argv[cur_arg] );
 
-			if(( cur_arg + 1 ) >= argc ) {
-				lprintf(LOG_ERR, "No  value specified for specifier %s\n",
-					spec[spec_count]->keyword );
-				return -1;
-				
+			if( spec[spec_count]->val_type != Cx_Fabric_Arg_Invalid ) {
+
+				cur_arg++;
+
+				if(( cur_arg ) >= argc ) {
+					lprintf(LOG_ERR, "No  value specified for specifier %s\n",
+						spec[spec_count]->keyword );
+					return -1;
+					
+				}
+	
+				// Now we need to look at its value
+				arg_type = cx_fabric_find_arg_type( args, 
+					argv[cur_arg]);
+				if( arg_type != spec[spec_count]->val_type ) {
+					lprintf(LOG_ERR, "Invalid value type for specifier %s\n",
+						spec[spec_count]->keyword );
+					return -1;
+				}
+
+				ret = cx_fabric_get_value( arg_type, argv[cur_arg], 
+					&spec_value[spec_count] );
 			}
-			// Now we need to look at its value
-			cur_arg++;
+			else {
+				spec_value[spec_count].val_type = Cx_Fabric_Arg_Invalid;
+				spec_value[spec_count].val.scalar[0] = 0;
+				spec_value[spec_count].val_len = 1;
 
-			arg_type = cx_fabric_find_arg_type( args, 
-				argv[cur_arg]);
-			if( arg_type != spec[spec_count]->val_type ) {
-				lprintf(LOG_ERR, "Invalid value type for specifier %s\n",
-					spec[spec_count]->keyword );
-				return -1;
 			}
-
-			ret = cx_fabric_get_value( arg_type, argv[cur_arg], 
-				&spec_value[spec_count] );
 			spec_count++;
 		}
 		else {
