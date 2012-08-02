@@ -161,6 +161,7 @@ cx_fabric_usage(void)
 	"  set|get ipsrc\n" 
 	"  set|get macaddrs tftp <tftp_server_addr> port <tftp_server_port> file <filename>\n" 
 	"  set|get mtu <standard|jumbo>\n" 
+	"  set|get uplink <uplink_id> node <node_id> interface <interface_id>\n"
 	"  set|get uplink_mode <mode>\n" 
 	"    where mode is:\n"
 	"      0 - all interfaces go to Uplink0\n"
@@ -1155,7 +1156,8 @@ cx_fabric_cmd_t get_cmd = {
 		IPMI_CMD_OEM_FABRIC_PARAMETER_IPSRC, 
 		IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR,
 		IPMI_CMD_OEM_FABRIC_PARAMETER_NODEID,
-		IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED, 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK 
 	},
 	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 
 		IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 
@@ -1174,7 +1176,8 @@ cx_fabric_cmd_t set_cmd = {
 		IPMI_CMD_OEM_FABRIC_PARAMETER_NETMASK, 
 		IPMI_CMD_OEM_FABRIC_PARAMETER_DEFGW, 
 		IPMI_CMD_OEM_FABRIC_PARAMETER_IPSRC, 
-		IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED, 
+		IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK 
 	},
 	{ 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 
 		IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 
@@ -1336,6 +1339,15 @@ cx_fabric_param_t linkspeed_param = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_param_t uplink_param = {
+	"uplink",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK,
+	{ IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
+	  IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0 },
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
 cx_fabric_param_t macaddr_param = {
 	"macaddr",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR,
@@ -1385,6 +1397,7 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{ "macaddr", Cx_Fabric_Arg_Parameter, (void *)&macaddr_param },
 	{ "nodeid", Cx_Fabric_Arg_Parameter, (void *)&nodeid_param },
 	{ "linkspeed", Cx_Fabric_Arg_Parameter, (void *)&linkspeed_param },
+	{ "uplink", Cx_Fabric_Arg_Parameter, (void *)&uplink_param },
 	{ "node", Cx_Fabric_Arg_Specifier, (void *)&node_spec },
 	{ "interface", Cx_Fabric_Arg_Specifier, (void *)&interface_spec },
 	{ "link", Cx_Fabric_Arg_Specifier, (void *)&link_spec },
@@ -1716,7 +1729,8 @@ cx_fabric_cmd_parser(
 
 	// Each argument is either a command, a parameter, a value, or a specifier
 	// Commands are config, get, set, update
-	// Parameters are ipaddr, ipsrc, netmask, defgw, macaddr
+	// Parameters are ipaddr, ipsrc, netmask, defgw, macaddr,
+	//    linkspeed, uplink
 	// Specifiers are node, interface
 	// Values can be a decimal number, ipv4 address, mac address, or
 	//    the strings "static" or "dynamic"
@@ -1737,8 +1751,7 @@ cx_fabric_cmd_parser(
 		else if( arg_type == Cx_Fabric_Arg_Parameter ) {
 			param = cx_fabric_get_param( args, argv[cur_arg] );
 
-
-			if(( cmd->parameter_value_expected ) &&
+			if((cmd && cmd->parameter_value_expected ) &&
 				( param->val_type != Cx_Fabric_Arg_Invalid )) {
 
 				if(( cur_arg + 1 ) >= argc ) {
@@ -1760,6 +1773,9 @@ cx_fabric_cmd_parser(
 	
 				ret = cx_fabric_get_value( arg_type, argv[cur_arg], 
 					&param_value );
+			} else if (!cmd) {
+				lprintf(LOG_ERR, "No valid command specified\n" );
+				goto cx_fabric_main_error_out;
 			}
 		}
 		else if( arg_type == Cx_Fabric_Arg_Specifier ) {
