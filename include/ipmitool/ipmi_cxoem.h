@@ -23,7 +23,7 @@
 #define IPMI_CXOEM_H
 
 #if HAVE_CONFIG_H
-# include <config.h>
+#include <config.h>
 #endif
 #include <ipmitool/ipmi.h>
 #include <ipmitool/ipmi_sdr.h>
@@ -86,8 +86,8 @@
 #define CXOEM_FWUL_STOP       4
 
 
-static const int CXOEM_SUCCESS              = 0;
-static const int CXOEM_ERROR                = -1;
+static const int CXOEM_SUCCESS = 0;
+static const int CXOEM_ERROR = -1;
 
 
 /*
@@ -100,7 +100,7 @@ typedef struct img_info_s {
 	uint32_t img_addr;
 	uint32_t img_size;
 	uint32_t in_use;
-}__attribute__((packed)) img_info_t;
+} __attribute__ ((packed)) img_info_t;
 
 typedef struct simg_header_s {
 	unsigned char magic[4];
@@ -111,10 +111,10 @@ typedef struct simg_header_s {
 	uint32_t daddr;
 	uint32_t flags;
 	uint32_t crc32;
-}__attribute__((packed)) simg_header_t;
+} __attribute__ ((packed)) simg_header_t;
 
 struct cx_fw_info_rs {
-	unsigned char ver;      /* param version */
+	unsigned char ver;	/* param version */
 	unsigned char count;	/* number of bytes */
 	img_info_t img_info;
 } __attribute__ ((packed));
@@ -125,5 +125,4 @@ struct cx_fw_info_rs {
  */
 int ipmi_cxoem_main(struct ipmi_intf *, int, char **);
 
-#endif /*IPMI_CXOEM_H*/
-
+#endif /*IPMI_CXOEM_H */
