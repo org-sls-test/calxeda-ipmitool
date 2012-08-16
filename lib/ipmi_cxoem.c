@@ -1,21 +1,21 @@
 /*
  * Copyright (c) 2011 Calxeda, Inc.  All Rights Reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * Redistribution of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * 
+ *
  * Redistribution in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in the
  * documentation and/or other materials provided with the distribution.
- * 
+ *
  * Neither the name of Calxeda, Inc. or the names of
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
- * 
+ *
  * This software is provided "AS IS," without a warranty of any kind.
  */
 
@@ -116,14 +116,14 @@ static void cx_fw_usage(void)
 		"\n"
 		"Firmware Commands: \n"
 		"\n"
-		"  download   <filename> <slot> <type> <tftp ip[:port]>\n"
-		"  upload     <slot> <filename> <type> <tftp ip[:port]>\n"
-		"  activate   <slot>\n"
-		"  invalidate <slot>\n"
-		"  makenext   <slot>\n"
-		"  flags       <slot> <flags> \n"
+		"  download   <filename> <partition> <type> <tftp ip[:port]>\n"
+		"  upload     <partition> <filename> <type> <tftp ip[:port]>\n"
+		"  activate   <partition>\n"
+		"  invalidate <partition>\n"
+		"  makenext   <partition>\n"
+		"  flags      <partition> <flags> \n"
 		"  status     <job id>      - returns status of the transfer by <job id>\n"
-		"  check      <slot>        - force a crc check\n"
+		"  check      <partition>   - force a crc check\n"
 		"  cancel     <job id>\n"
 		"  info       \n"
 		"  get        <filename> <offset> <size> <tftp ip[:port]>\n"
@@ -181,8 +181,8 @@ static void cx_feature_usage(void)
 		"Ex: ipmitool cxoem feature enable hwwd\n" "\n");
 }
 
-int cx_fw_download(struct ipmi_intf *intf, char *filename, int slot, int type,
-		   int ip1, int ip2, int ip3, int ip4, int port)
+int cx_fw_download(struct ipmi_intf *intf, char *filename, int partition,
+		   int type, int ip1, int ip2, int ip3, int ip4, int port)
 {
 	int rc = CXOEM_SUCCESS;
 	struct ipmi_rs *rsp;
@@ -194,7 +194,7 @@ int cx_fw_download(struct ipmi_intf *intf, char *filename, int slot, int type,
 	req.msg.netfn = IPMI_NETFN_OEM_SS;
 	req.msg.cmd = IPMI_CMD_OEM_FW_DOWNLOAD;
 	msg_data[0] = type;
-	msg_data[1] = slot;
+	msg_data[1] = partition;
 	msg_data[2] = CXOEM_FWDL_START;
 	msg_data[3] = 0;
 	msg_data[4] = 0;
@@ -230,8 +230,8 @@ int cx_fw_download(struct ipmi_intf *intf, char *filename, int slot, int type,
 	return rc;
 }
 
-int cx_fw_upload(struct ipmi_intf *intf, char *filename, int slot, int type,
-		 int ip1, int ip2, int ip3, int ip4, int port)
+int cx_fw_upload(struct ipmi_intf *intf, char *filename, int partition,
+		 int type, int ip1, int ip2, int ip3, int ip4, int port)
 {
 	int rc = CXOEM_SUCCESS;
 	struct ipmi_rs *rsp;
@@ -243,7 +243,7 @@ int cx_fw_upload(struct ipmi_intf *intf, char *filename, int slot, int type,
 	req.msg.netfn = IPMI_NETFN_OEM_SS;
 	req.msg.cmd = IPMI_CMD_OEM_FW_DOWNLOAD;
 	msg_data[0] = type;
-	msg_data[1] = slot;
+	msg_data[1] = partition;
 	msg_data[2] = CXOEM_FWUL_START;
 	msg_data[3] = 0;
 	msg_data[4] = 0;
@@ -369,7 +369,7 @@ int cx_fw_status(struct ipmi_intf *intf, uint16_t handle)
 	return rc;
 }
 
-int cx_fw_check(struct ipmi_intf *intf, int slot)
+int cx_fw_check(struct ipmi_intf *intf, int partition)
 {
 	int rc = CXOEM_SUCCESS;
 	struct ipmi_rs *rsp;
@@ -382,7 +382,7 @@ int cx_fw_check(struct ipmi_intf *intf, int slot)
 	req.msg.cmd = IPMI_CMD_OEM_FW_GET_STATUS;
 	msg_data[0] = 0;
 	msg_data[1] = 4;	// param 4 = check image
-	msg_data[2] = slot;
+	msg_data[2] = partition;
 	req.msg.data = msg_data;
 	req.msg.data_len = 3;
 
@@ -413,7 +413,7 @@ int cx_fw_check(struct ipmi_intf *intf, int slot)
 	return rc;
 }
 
-int cx_fw_info(struct ipmi_intf *intf, int slot)
+int cx_fw_info(struct ipmi_intf *intf, int partition)
 {
 	int rc = CXOEM_SUCCESS;
 	struct ipmi_rs *rsp;
@@ -431,7 +431,7 @@ int cx_fw_info(struct ipmi_intf *intf, int slot)
 	req.msg.cmd = IPMI_CMD_OEM_FW_GET_STATUS;
 	msg_data[0] = 0;
 	msg_data[1] = 2;	// param 2 = info
-	msg_data[2] = slot;
+	msg_data[2] = partition;
 	req.msg.data = msg_data;
 	req.msg.data_len = 2;
 
@@ -459,7 +459,7 @@ int cx_fw_info(struct ipmi_intf *intf, int slot)
 			return -1;
 		}
 
-		printf("%-18s : %02d\n", "Slot", ii[i].id);
+		printf("%-18s : %02d\n", "Partition", ii[i].id);
 		printf("%-18s : %02x (%s)\n", "Type", ii[i].type,
 		       val2str(ii[i].type, cx_ptypes));
 		printf("%-18s : %08x\n", "Offset", ii[i].img_addr);
@@ -478,7 +478,8 @@ int cx_fw_info(struct ipmi_intf *intf, int slot)
 
 
 int
-cx_fw_get_simg_header(struct ipmi_intf *intf, int slot, simg_header_t * header)
+cx_fw_get_simg_header(struct ipmi_intf *intf, int partition,
+		      simg_header_t * header)
 {
 	int rc = CXOEM_SUCCESS;
 	struct ipmi_rs *rsp;
@@ -491,7 +492,7 @@ cx_fw_get_simg_header(struct ipmi_intf *intf, int slot, simg_header_t * header)
 	req.msg.cmd = IPMI_CMD_OEM_FW_GET_STATUS;
 	msg_data[0] = 0;
 	msg_data[1] = 3;	// param 3 = get SIMG header
-	msg_data[2] = slot;
+	msg_data[2] = partition;
 	req.msg.data = msg_data;
 	req.msg.data_len = 3;
 
@@ -513,7 +514,7 @@ cx_fw_get_simg_header(struct ipmi_intf *intf, int slot, simg_header_t * header)
 }
 
 
-int cx_fw_flags(struct ipmi_intf *intf, int slot, uint32_t flags)
+int cx_fw_flags(struct ipmi_intf *intf, int partition, uint32_t flags)
 {
 	struct ipmi_rs *rsp;
 	struct ipmi_rq req;
@@ -526,7 +527,7 @@ int cx_fw_flags(struct ipmi_intf *intf, int slot, uint32_t flags)
 	req.msg.cmd = IPMI_CMD_OEM_FW_SET_STATUS;
 	msg_data[0] = 0;	// resvd
 	msg_data[1] = 1;	// param = 1 = "set flags"
-	msg_data[2] = slot;
+	msg_data[2] = partition;
 	msg_data[3] = (uint8_t) ((flags >> 24) & 0xff);
 	msg_data[4] = (uint8_t) ((flags >> 16) & 0xff);
 	msg_data[5] = (uint8_t) ((flags >> 8) & 0xff);
@@ -549,12 +550,12 @@ int cx_fw_flags(struct ipmi_intf *intf, int slot, uint32_t flags)
 }
 
 
-int cx_fw_get_flags(struct ipmi_intf *intf, int slot, unsigned int *flags)
+int cx_fw_get_flags(struct ipmi_intf *intf, int partition, unsigned int *flags)
 {
 	int rc = CXOEM_SUCCESS;
 	simg_header_t header;
 
-	if (cx_fw_get_simg_header(intf, slot, &header)) {
+	if (cx_fw_get_simg_header(intf, partition, &header)) {
 		return -1;
 	}
 
@@ -564,7 +565,7 @@ int cx_fw_get_flags(struct ipmi_intf *intf, int slot, unsigned int *flags)
 }
 
 
-int cx_fw_makenext(struct ipmi_intf *intf, int slot)
+int cx_fw_makenext(struct ipmi_intf *intf, int partition)
 {
 	struct ipmi_rs *rsp;
 	struct ipmi_rq req;
@@ -577,7 +578,7 @@ int cx_fw_makenext(struct ipmi_intf *intf, int slot)
 	req.msg.cmd = IPMI_CMD_OEM_FW_SET_STATUS;
 	msg_data[0] = 0;	// resvd
 	msg_data[1] = 3;	// param = 3 = "make next"
-	msg_data[2] = slot;
+	msg_data[2] = partition;
 	req.msg.data = msg_data;
 	req.msg.data_len = 3;
 
@@ -595,35 +596,35 @@ int cx_fw_makenext(struct ipmi_intf *intf, int slot)
 	return 0;
 }
 
-int cx_fw_activate(struct ipmi_intf *intf, int slot)
+int cx_fw_activate(struct ipmi_intf *intf, int partition)
 {
 	unsigned int flags;
 
-	if (cx_fw_get_flags(intf, slot, &flags)) {
+	if (cx_fw_get_flags(intf, partition, &flags)) {
 		return -1;
 	}
 	//printf("activate: read flags <%08x>\n", flags);
 	flags &= (~0x02);	// bit 1 = SIMG_FLAG_ACTIVE
 	printf("activate: write flags <%08x>\n", flags);
 
-	cx_fw_flags(intf, slot, flags);
+	cx_fw_flags(intf, partition, flags);
 
 	return 0;
 }
 
 
-int cx_fw_invalidate(struct ipmi_intf *intf, int slot)
+int cx_fw_invalidate(struct ipmi_intf *intf, int partition)
 {
 	unsigned int flags;
 
-	if (cx_fw_get_flags(intf, slot, &flags)) {
+	if (cx_fw_get_flags(intf, partition, &flags)) {
 		return -1;
 	}
 	//printf("invalidate: read flags <%08x>\n", flags);
 	flags &= (~0x04);	// bit 2 = SIMG_FLAG_INVALID
 	printf("invalidate: write flags <%08x>\n", flags);
 
-	cx_fw_flags(intf, slot, flags);
+	cx_fw_flags(intf, partition, flags);
 
 	return 0;
 }
@@ -659,7 +660,7 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 {
 	char filename[65];
 	int rv = 0;
-	int slot, type;
+	int partition, type;
 	int ip1 = 0, ip2 = 0, ip3 = 0, ip4 = 0;
 	int port = 0;
 
@@ -681,12 +682,12 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 					"File name must be smaller than 32 bytes\n");
 			}
 
-			slot = strtol(argv[2], (char **)NULL, 10);
+			partition = strtol(argv[2], (char **)NULL, 10);
 			if (!errno) {
-				printf("Slot              : %d\n", slot);
+				printf("Partition         : %d\n", partition);
 			} else {
 				lprintf(LOG_ERR,
-					"<slot> doesn't look like a valid value\n");
+					"<partition> doesn't look like a valid value\n");
 				return -1;
 			}
 
@@ -733,7 +734,7 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 				cx_fw_usage();
 				return -1;
 			}
-			cx_fw_download(intf, filename, slot, type,
+			cx_fw_download(intf, filename, partition, type,
 				       ip1, ip2, ip3, ip4, port);
 		} else {
 			cx_fw_usage();
@@ -750,12 +751,12 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 					"File name must be smaller than 32 bytes\n");
 			}
 
-			slot = strtol(argv[1], (char **)NULL, 10);
+			partition = strtol(argv[1], (char **)NULL, 10);
 			if (!errno) {
-				printf("Slot              : %d\n", slot);
+				printf("Partition         : %d\n", partition);
 			} else {
 				lprintf(LOG_ERR,
-					"<slot> doesn't look like a valid value\n");
+					"<partition> doesn't look like a valid value\n");
 				return -1;
 			}
 
@@ -802,7 +803,7 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 				cx_fw_usage();
 				return -1;
 			}
-			cx_fw_upload(intf, filename, slot, type,
+			cx_fw_upload(intf, filename, partition, type,
 				     ip1, ip2, ip3, ip4, port);
 		} else {
 			cx_fw_usage();
@@ -956,79 +957,79 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 		cx_fw_status(intf, handle);
 		rv = 0;
 	} else if (strncmp(argv[0], "info", 4) == 0) {
-		int slot = -1;
+		int partition = -1;
 
 		if (argc > 3) {
-			slot = strtol(argv[1], (char **)NULL, 10);
+			partition = strtol(argv[1], (char **)NULL, 10);
 			if (!errno) {
-				printf("Slot              : %d\n", slot);
+				printf("Partition         : %d\n", partition);
 			} else {
 				lprintf(LOG_ERR,
-					"<slot> doesn't look like a valid value\n");
+					"<partition> doesn't look like a valid value\n");
 				return -1;
 			}
 		}
-		cx_fw_info(intf, slot);
+		cx_fw_info(intf, partition);
 	} else if (strncmp(argv[0], "makenext", 8) == 0) {
 		if (argc == 2) {
-			slot = strtol(argv[1], (char **)NULL, 10);
+			partition = strtol(argv[1], (char **)NULL, 10);
 			if (!errno) {
-				printf("Slot              : %d\n", slot);
+				printf("Partition         : %d\n", partition);
 			} else {
 				fprintf(stderr,
-					"<slot> doesn't look like a valid value\n");
+					"<partition> doesn't look like a valid value\n");
 				return -1;
 			}
 		} else {
 			cx_fw_usage();
 			return -1;
 		}
-		cx_fw_makenext(intf, slot);
+		cx_fw_makenext(intf, partition);
 	} else if (strncmp(argv[0], "activate", 8) == 0) {
-		int slot = -1;
+		int partition = -1;
 
 		if (argc == 2) {
-			slot = strtol(argv[1], (char **)NULL, 10);
+			partition = strtol(argv[1], (char **)NULL, 10);
 			if (!errno) {
-				printf("Slot              : %d\n", slot);
+				printf("Partition         : %d\n", partition);
 			} else {
 				lprintf(LOG_ERR,
-					"<slot> doesn't look like a valid value\n");
+					"<partition> doesn't look like a valid value\n");
 				return -1;
 			}
 		} else {
 			cx_fw_usage();
 			return -1;
 		}
-		cx_fw_activate(intf, slot);
+		cx_fw_activate(intf, partition);
 	} else if (strncmp(argv[0], "invalidate", 10) == 0) {
-		int slot = -1;
+		int partition = -1;
 
 		if (argc == 2) {
-			slot = strtol(argv[1], (char **)NULL, 10);
+			partition = strtol(argv[1], (char **)NULL, 10);
 			if (!errno) {
-				printf("Slot              : %d\n", slot);
+				printf("Partition         : %d\n", partition);
 			} else {
 				lprintf(LOG_ERR,
-					"<slot> doesn't look like a valid value\n");
+					"<partition> doesn't look like a valid value\n");
 				return -1;
 			}
 		} else {
 			cx_fw_usage();
 			return -1;
 		}
-		cx_fw_invalidate(intf, slot);
+		cx_fw_invalidate(intf, partition);
 	} else if (strncmp(argv[0], "flags", 5) == 0) {
-		int slot = -1;
+		int partition = -1;
 		uint32_t flags = 0xffffffff;
 
 		if (argc == 3) {
-			slot = strtol(argv[1], (char **)NULL, 10);
+			partition = strtol(argv[1], (char **)NULL, 10);
 			if (!errno) {
-				printf("Slot              : %d\n", slot);
+				printf("Partition         : %d\n", partition);
 			} else {
 				lprintf(LOG_ERR,
-					"<slot> doesn't look like a valid value\n");
+					"<partition> doesn't look like a valid value\n");
 				return -1;
 			}
 			flags = strtoul(argv[2], (char **)NULL, 16);
@@ -1043,24 +1044,24 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 			cx_fw_usage();
 			return -1;
 		}
-		cx_fw_flags(intf, slot, flags);
+		cx_fw_flags(intf, partition, flags);
 	} else if (strncmp(argv[0], "check", 5) == 0) {
-		int slot = -1;
+		int partition = -1;
 
 		if (argc == 2) {
-			slot = strtol(argv[1], (char **)NULL, 10);
+			partition = strtol(argv[1], (char **)NULL, 10);
 			if (!errno) {
-				printf("Slot  :  %d\n", slot);
+				printf("Partition         : %d\n", partition);
 			} else {
 				lprintf(LOG_ERR,
-					"<slot> doesn't look like a valid value\n");
+					"<partition> doesn't look like a valid value\n");
 				return -1;
 			}
 		} else {
 			cx_fw_usage();
 			return -1;
 		}
-		cx_fw_check(intf, slot);
+		cx_fw_check(intf, partition);
 		rv = 0;
 	} else if (strncmp(argv[0], "reset", 5) == 0) {
 		cx_fw_reset(intf);
@@ -1525,7 +1526,7 @@ cx_fabric_find_arg_type(cx_fabric_arg_t * arg_type_list, char *arg)
 		i++;
 	}
 
-	// If not, is it an expected value type (Scalar, String, 
+	// If not, is it an expected value type (Scalar, String,
 	//              IPV4 address, MAC address
 
 	// Is it a MAC Address?
@@ -2518,9 +2519,9 @@ static int cx_data_main(struct ipmi_intf *intf, int argc, char **argv)
 #define MAX_MSG_DATA_SIZE 	256
 /**
  * Generic Execute IPMI command
- * 
+ *
  * @param intf       IPMI Interface
- *                   
+ *
  * @param net_fn     Net Function
  * @param command    Command to be send
  * @param input_buf  Input Buffer that contains the data
@@ -2532,7 +2533,7 @@ static int cx_data_main(struct ipmi_intf *intf, int argc, char **argv)
  *                   contains the actual number of bytes of data
  * @param completion_code
  *                   Command completion code
- * 
+ *
  * @return 0  = successful
  *         -1 = failure
  */
@@ -2605,11 +2606,11 @@ cx_send_ipmi_cmd(struct ipmi_intf *intf,
 
 /**
  * Ping the "BMC" to see if this is Calxeda SoC
- * 
+ *
  * @param intf     IPMI interface
  * @param to_print TRUE to print the result
  *                 FALSE not to print the result
- * 
+ *
  * @return TRUE if this is Calxeda SoC
  *         FALSE otherwise.
  */
