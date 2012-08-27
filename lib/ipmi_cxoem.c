@@ -1299,8 +1299,8 @@ cx_fabric_param_t linkspeed_param = {
 	IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
 	{0, 0, 0, 0, 0}
 	,
-	Cx_Fabric_Arg_Value_Scalar, 1,
-	cx_fabric_scalar_printer
+	Cx_Fabric_Arg_Value_Scalar, 4,
+	cx_fabric_string_printer
 };
 
 cx_fabric_param_t uplink_param = {
@@ -1462,8 +1462,8 @@ cx_fabric_param_t linkspeed_config_param = {
 	"linkspeed",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
 	{0, 0, 0, 0, 0},
-	Cx_Fabric_Arg_Value_Scalar, 1,
-	cx_fabric_scalar_printer
+	Cx_Fabric_Arg_Value_Scalar, 4,
+	cx_fabric_string_printer
 };
 
 cx_fabric_spec_t tftp_config_spec = {
@@ -1510,6 +1510,7 @@ cx_fabric_find_arg_type(cx_fabric_arg_t * arg_type_list, char *arg)
 {
 	int i, ip0, ip1, ip2, ip3;
 	int mac0, mac1, mac2, mac3, mac4, mac5;
+	int ls0, ls1;
 	int val;
 	int ret;
 
@@ -1538,6 +1539,11 @@ cx_fabric_find_arg_type(cx_fabric_arg_t * arg_type_list, char *arg)
 	if ((sscanf(arg, "%d.%d.%d.%d", &ip0, &ip1, &ip2, &ip3)) == 4) {
 		return Cx_Fabric_Arg_Value_IPV4_Address;
 	}
+
+	if ((sscanf(arg, "%d.%d", &ls0, &ls1)) == 2) {
+		return Cx_Fabric_Arg_Value_Scalar;
+	}
+
 	// Is it a string?
 	if (isalpha(arg[0])) {
 		// Probably...
