@@ -464,7 +464,7 @@ int cx_fw_info(struct ipmi_intf *intf, int partition)
 		       val2str(ii[i].type, cx_ptypes));
 		printf("%-18s : %08x\n", "Offset", ii[i].img_addr);
 		printf("%-18s : %08x\n", "Size", ii[i].img_size);
-		printf("%-18s : %08x\n", "Version", header.version);
+		printf("%-18s : %08x\n", "Priority", header.priority);
 		printf("%-18s : %08x\n", "Daddr", header.daddr);
 		printf("%-18s : %08x\n", "Flags", header.flags);
 		if (ii[i].in_use <= 1)
