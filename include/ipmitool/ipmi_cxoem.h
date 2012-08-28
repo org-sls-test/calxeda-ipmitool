@@ -111,6 +111,7 @@ typedef struct simg_header_s {
 	uint32_t daddr;
 	uint32_t flags;
 	uint32_t crc32;
+	unsigned char version[32];
 } __attribute__ ((packed)) simg_header_t;
 
 struct cx_fw_info_rs {
