@@ -1097,8 +1097,8 @@ typedef struct {
 } cx_fabric_arg_t;
 
 #define MAX_PERMITTED_PARAMS 10
-#define MAX_PERMITTED_SPECIFIERS 5
-#define MAX_REQUIRED_SPECIFIERS 5
+#define MAX_PERMITTED_SPECIFIERS 10
+#define MAX_REQUIRED_SPECIFIERS 10
 typedef struct {
 	char *keyword;
 	uint8_t ipmi_cmd;
@@ -1172,6 +1172,25 @@ cx_fabric_cmd_t rm_cmd = {
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0, 0}
+};
+
+cx_fabric_cmd_t info_cmd = {
+	"info",
+	IPMI_CMD_OEM_FABRIC_INFO,
+	1, 0,
+	{IPMI_CMD_OEM_FABRIC_PARAMETER_LINKMAP,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_DEPTH_CHART,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_ROUTING_TABLE,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_STATS,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_MAC_STATS,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_STATS, 0},
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_MAC,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME},
+	{0, 0, 0, 0, 0}
 };
 
 #define MAC_ADDRESS_SIZE    6
@@ -1326,6 +1345,54 @@ cx_fabric_param_t macaddr_param = {
 	cx_fabric_mac_printer
 };
 
+cx_fabric_param_t linkmap_param = {
+	"linkmap",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_LINKMAP,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t depth_chart_param = {
+	"depth_chart",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_DEPTH_CHART,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t routing_table_param = {	
+	"routing_table",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_ROUTING_TABLE,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t link_stats_param = {	
+	"link_stats",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_STATS,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t mac_stats_param = {	
+	"mac_stats",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_MAC_STATS,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t uplink_stats_param = {	
+	"uplink_stats",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_STATS,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
 cx_fabric_spec_t node_spec = {
 	"node",
 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
@@ -1354,11 +1421,40 @@ cx_fabric_spec_t override_spec = {
 	NULL
 };
 
+cx_fabric_spec_t mac_spec = {
+	"mac",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_MAC,
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
+cx_fabric_spec_t tftp_spec = {
+	"tftp",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
+	Cx_Fabric_Arg_Value_IPV4_Address, 4,
+	cx_fabric_ipv4_printer
+};
+
+cx_fabric_spec_t port_spec = {
+	"port",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
+	Cx_Fabric_Arg_Value_Scalar, 2,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_spec_t file_spec = {
+	"file",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME,
+	Cx_Fabric_Arg_Value_String, 20,
+	cx_fabric_string_printer
+};
+
 cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"get", Cx_Fabric_Arg_Command, (void *)&get_cmd},
 	{"set", Cx_Fabric_Arg_Command, (void *)&set_cmd},
 	{"add", Cx_Fabric_Arg_Command, (void *)&add_cmd},
 	{"rm", Cx_Fabric_Arg_Command, (void *)&rm_cmd},
+	{"info", Cx_Fabric_Arg_Command, (void *)&info_cmd},
 	{"update_config", Cx_Fabric_Arg_Command, (void *)&update_cmd},
 	{"ipaddr", Cx_Fabric_Arg_Parameter, (void *)&ipaddr_param},
 	{"ipsrc", Cx_Fabric_Arg_Parameter, (void *)&ipsrc_param},
@@ -1367,11 +1463,21 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"macaddr", Cx_Fabric_Arg_Parameter, (void *)&macaddr_param},
 	{"nodeid", Cx_Fabric_Arg_Parameter, (void *)&nodeid_param},
 	{"linkspeed", Cx_Fabric_Arg_Parameter, (void *)&linkspeed_param},
+	{"linkmap", Cx_Fabric_Arg_Parameter, (void *)&linkmap_param},
+	{"depth_chart", Cx_Fabric_Arg_Parameter, (void *)&depth_chart_param},
+	{"routing_table", Cx_Fabric_Arg_Parameter, (void *)&routing_table_param},
+	{"link_stats", Cx_Fabric_Arg_Parameter, (void *)&link_stats_param},
+	{"mac_stats", Cx_Fabric_Arg_Parameter, (void *)&mac_stats_param},
+	{"uplink_stats", Cx_Fabric_Arg_Parameter, (void *)&uplink_stats_param},
 	{"uplink", Cx_Fabric_Arg_Parameter, (void *)&uplink_param},
 	{"node", Cx_Fabric_Arg_Specifier, (void *)&node_spec},
 	{"interface", Cx_Fabric_Arg_Specifier, (void *)&interface_spec},
 	{"link", Cx_Fabric_Arg_Specifier, (void *)&link_spec},
 	{"override", Cx_Fabric_Arg_Specifier, (void *)&override_spec},
+	{"mac", Cx_Fabric_Arg_Specifier, (void *)&mac_spec},
+	{"tftp", Cx_Fabric_Arg_Specifier, (void *)&tftp_spec},
+	{"port", Cx_Fabric_Arg_Specifier, (void *)&port_spec},
+	{"file", Cx_Fabric_Arg_Specifier, (void *)&file_spec},
 	{NULL, Cx_Fabric_Arg_Invalid, (void *)NULL},
 };
 
