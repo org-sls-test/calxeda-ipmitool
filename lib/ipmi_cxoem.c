@@ -1424,8 +1424,8 @@ cx_fabric_spec_t override_spec = {
 cx_fabric_spec_t mac_spec = {
 	"mac",
 	IPMI_CMD_OEM_FABRIC_SPECIFIER_MAC,
-	Cx_Fabric_Arg_Invalid, 0,
-	NULL
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
 };
 
 cx_fabric_spec_t tftp_spec = {
