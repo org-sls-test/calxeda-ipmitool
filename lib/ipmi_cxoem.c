@@ -128,7 +128,9 @@ static void cx_fw_usage(void)
 		"  info       \n"
 		"  get        <filename> <offset> <size> <tftp ip[:port]>\n"
 		"  put        <filename> <offset> <size> <tftp ip[:port]>\n"
-		"  reset      Reset to factory default\n" "\n");
+		"  reset      Reset to factory default\n"
+		"  version    <version_str> - set the firmware version\n"
+		"\n");
 }
 
 static void cx_fabric_usage(void)
@@ -660,6 +662,38 @@ int cx_fw_reset(struct ipmi_intf *intf)
 }
 
 
+int cx_fw_version(struct ipmi_intf *intf, char *version)
+{
+	struct ipmi_rs *rsp;
+	struct ipmi_rq req;
+	uint8_t msg_data[64];
+	int i;
+
+	memset(&req, 0, sizeof(req));
+	memset(msg_data, 0, sizeof(msg_data));
+	req.msg.netfn = IPMI_NETFN_OEM_SS;
+	req.msg.cmd = IPMI_CMD_OEM_FW_SET_STATUS;
+	msg_data[0] = 0;	// resvd
+	msg_data[1] = 4;	// param = 4 = "set version"
+	strncpy(&msg_data[2], version, 32);
+	req.msg.data = msg_data;
+	req.msg.data_len = 34;
+
+	rsp = intf->sendrecv(intf, &req);
+	if (rsp == NULL) {
+		lprintf(LOG_ERR, "Error starting fw download");
+		return -1;
+	}
+	if (rsp->ccode > 0) {
+		lprintf(LOG_ERR, "FW set version failed: %s",
+			val2str(rsp->ccode, completion_code_vals));
+		return -1;
+	}
+
+	return 0;
+}
+
+
 int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 {
 	char filename[65];
@@ -1070,6 +1104,9 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 	} else if (strncmp(argv[0], "reset", 5) == 0) {
 		cx_fw_reset(intf);
 		rv = 0;
+	} else if (strncmp(argv[0], "version", 7) == 0) {
+		cx_fw_version(intf, argv[1]);
+		rv = 0;
 	} else {
 		cx_fw_usage();
 		return -1;
@@ -1189,7 +1226,7 @@ cx_fabric_cmd_t info_cmd = {
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME},
-	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP, 
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 0, 0, 0}
 };
 
@@ -1361,7 +1398,7 @@ cx_fabric_param_t depth_chart_param = {
 	cx_fabric_scalar_printer
 };
 
-cx_fabric_param_t routing_table_param = {	
+cx_fabric_param_t routing_table_param = {
 	"routing_table",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_ROUTING_TABLE,
 	{0, 0, 0, 0, 0},
@@ -1369,7 +1406,7 @@ cx_fabric_param_t routing_table_param = {
 	cx_fabric_scalar_printer
 };
 
-cx_fabric_param_t link_stats_param = {	
+cx_fabric_param_t link_stats_param = {
 	"link_stats",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_STATS,
 	{0, 0, 0, 0, 0},
@@ -1377,7 +1414,7 @@ cx_fabric_param_t link_stats_param = {
 	cx_fabric_scalar_printer
 };
 
-cx_fabric_param_t mac_stats_param = {	
+cx_fabric_param_t mac_stats_param = {
 	"mac_stats",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_MAC_STATS,
 	{0, 0, 0, 0, 0},
@@ -1385,7 +1422,7 @@ cx_fabric_param_t mac_stats_param = {
 	cx_fabric_scalar_printer
 };
 
-cx_fabric_param_t uplink_stats_param = {	
+cx_fabric_param_t uplink_stats_param = {
 	"uplink_stats",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_STATS,
 	{0, 0, 0, 0, 0},
@@ -2740,6 +2777,7 @@ tboolean cx_is_CalxedaSoc(struct ipmi_intf * intf, tboolean to_print)
 		uint8_t revision;
 		uint32_t build_number;
 		uint32_t timestamp;
+		char firmware_ver[32];
 	} __attribute__ ((packed));
 	typedef struct oem_device_info_basic_s oem_device_info_basic_t;
 
@@ -2767,7 +2805,9 @@ tboolean cx_is_CalxedaSoc(struct ipmi_intf * intf, tboolean to_print)
 				if (to_print) {
 					printf("Calxeda SoC (0x%6.6X)\n",
 					       basic_rs->iana);
-					printf("  Version: %d.%d.%d\n",
+					printf("  Firmware Version: %s\n",
+					       basic_rs->firmware_ver);
+					printf("  SoC Version: %d.%d.%d\n",
 					       basic_rs->major_ver,
 					       basic_rs->minor_ver,
 					       basic_rs->revision);
