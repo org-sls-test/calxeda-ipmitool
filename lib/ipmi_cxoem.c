@@ -1220,6 +1220,7 @@ cx_fabric_cmd_t info_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_ROUTING_TABLE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_STATS,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MAC_STATS,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_MAC_CHANNEL_STATS,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_STATS, 0},
 	{ IPMI_CMD_OEM_FABRIC_SPECIFIER_MAC,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
@@ -1422,6 +1423,14 @@ cx_fabric_param_t mac_stats_param = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_param_t mac_channel_stats_param = {
+	"mac_channel_stats",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_MAC_CHANNEL_STATS,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
 cx_fabric_param_t uplink_stats_param = {
 	"uplink_stats",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_STATS,
@@ -1504,6 +1513,7 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"depth_chart", Cx_Fabric_Arg_Parameter, (void *)&depth_chart_param},
 	{"routing_table", Cx_Fabric_Arg_Parameter, (void *)&routing_table_param},
 	{"link_stats", Cx_Fabric_Arg_Parameter, (void *)&link_stats_param},
+	{"mac_channel_stats", Cx_Fabric_Arg_Parameter, (void *)&mac_channel_stats_param},
 	{"mac_stats", Cx_Fabric_Arg_Parameter, (void *)&mac_stats_param},
 	{"uplink_stats", Cx_Fabric_Arg_Parameter, (void *)&uplink_stats_param},
 	{"uplink", Cx_Fabric_Arg_Parameter, (void *)&uplink_param},
