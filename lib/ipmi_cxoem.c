@@ -1243,7 +1243,8 @@ cx_fabric_cmd_t set_watch_cmd = {
 	{ IPMI_CMD_OEM_FABRIC_SPECIFIER_MAC,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_HOST,
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT, 0},
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT, 
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FREQUENCY, 0},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_HOST, 0, 0, 0, 0}
 };
 
@@ -1567,6 +1568,13 @@ cx_fabric_spec_t port_spec = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_spec_t frequency_spec = {
+	"frequency",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_FREQUENCY,
+	Cx_Fabric_Arg_Value_Scalar, 2,
+	cx_fabric_scalar_printer
+};
+
 cx_fabric_spec_t file_spec = {
 	"file",
 	IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME,
@@ -1613,6 +1621,7 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"tftp", Cx_Fabric_Arg_Specifier, (void *)&tftp_spec},
 	{"host", Cx_Fabric_Arg_Specifier, (void *)&host_spec},
 	{"port", Cx_Fabric_Arg_Specifier, (void *)&port_spec},
+	{"frequency", Cx_Fabric_Arg_Specifier, (void *)&frequency_spec},
 	{"file", Cx_Fabric_Arg_Specifier, (void *)&file_spec},
 	{NULL, Cx_Fabric_Arg_Invalid, (void *)NULL},
 };
