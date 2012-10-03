@@ -2281,7 +2281,7 @@ static void cx_info_usage(void)
 		"\n"
 		"Type Commands: \n"
 		"\n"
-		"  basic \n" "  partnum \n" "  chassis \n" "  node \n" "\n");
+		"  basic \n" "  partnum \n" "  chassis \n" "  card \n" "  node \n" "\n");
 }
 
 /* Interpret the string pointed to by valrep according to the length contraint
@@ -2964,6 +2964,47 @@ static int cx_info_main(struct ipmi_intf *intf, int argc, char **argv)
 	} else if (strncmp(argv[0], "chassis", 7) == 0) {
 		if (cx_is_CalxedaSoc(intf, FALSE)) {
 		}
+	} else if (strncmp(argv[0], "card", 4) == 0) {
+		struct oem_device_info_card_s {
+			uint16_t	card_id;
+			uint16_t	card_rev;
+		} __attribute__ ((packed));
+		typedef struct oem_device_info_card_s oem_device_info_card_t;
+		char board_type[32];
+
+		oem_device_info_card_t *card_rs;
+		card_rs = (void *) rs_data;
+		
+		if (cx_is_CalxedaSoc(intf, FALSE)) {
+			rs_data[0] = 0x06;	/* Card Info */
+			rv = cx_send_ipmi_cmd(intf, IPMI_NETFN_OEM_SS,
+					      IPMI_CMD_OEM_GET_DEVICE_INFO,
+					      rs_data, 1, rs_data,
+					      &rs_data_size, &completion_code);
+			if (rv == 0) {
+				if (completion_code) {
+					printf
+					    ("command failed with 0x%X completion code\n",
+					     completion_code & 0xFF);
+					rv = -1;
+				} else {
+					switch (card_rs->card_id) {
+					case 0:
+						strcpy(board_type, "EnergyCard");
+						break;
+					case 7:
+						strcpy(board_type, "Slingshot");
+						break;
+					default:
+						sprintf(board_type, "Unknown (%X)", card_rs->card_id);
+						break;
+					}
+					printf("  Board Type: %s\n", board_type);
+					printf("  Board Revision: %d\n", card_rs->card_rev);
+				}
+			}
+			
+		}
 	} else if (strncmp(argv[0], "node", 4) == 0) {
 		struct oem_device_info_node_s {
 			uint8_t oui[3];
@@ -2984,9 +3025,8 @@ static int cx_info_main(struct ipmi_intf *intf, int argc, char **argv)
 					      &rs_data_size, &completion_code);
 			if (rv == 0) {
 				if (completion_code) {
-					printf
-					    ("command failed with 0x%X completion code\n",
-					     completion_code & 0xFF);
+					printf("command failed with 0x%X completion code\n",
+                           completion_code & 0xFF);
 					rv = -1;
 				} else {
 					printf("OUI = 0x%X%X%X\n",
