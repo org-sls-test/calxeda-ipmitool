@@ -1243,7 +1243,7 @@ cx_fabric_cmd_t set_watch_cmd = {
 	{ IPMI_CMD_OEM_FABRIC_SPECIFIER_MAC,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_HOST,
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT, 
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FREQUENCY, 0},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_HOST, 0, 0, 0, 0}
 };
@@ -1604,9 +1604,9 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"global_watch", Cx_Fabric_Arg_Parameter, (void *)&global_watch_param},
 	{"link_stats", Cx_Fabric_Arg_Parameter, (void *)&link_stats_param},
 	{"link_watch", Cx_Fabric_Arg_Parameter, (void *)&link_watch_param},
-	{"mac_channel_stats", Cx_Fabric_Arg_Parameter, 
+	{"mac_channel_stats", Cx_Fabric_Arg_Parameter,
 			(void *)&mac_channel_stats_param},
-	{"mac_channel_watch", Cx_Fabric_Arg_Parameter, 
+	{"mac_channel_watch", Cx_Fabric_Arg_Parameter,
 			(void *)&mac_channel_watch_param},
 	{"mac_stats", Cx_Fabric_Arg_Parameter, (void *)&mac_stats_param},
 	{"mac_watch", Cx_Fabric_Arg_Parameter, (void *)&mac_watch_param},
@@ -2892,12 +2892,10 @@ tboolean cx_is_CalxedaSoc(struct ipmi_intf * intf, tboolean to_print)
 
 	tboolean is_Calxeda_soc = 0;	/* Assuming it's not Calxeda */
 	int rv = 0;
-	uint8_t rs_data[MAX_MSG_DATA_SIZE];
+	uint8_t rs_data[MAX_MSG_DATA_SIZE] = {0};
 	int rs_data_size = MAX_MSG_DATA_SIZE;
-	uint8_t completion_code;
-	oem_device_info_basic_t *basic_rs;
-
-	basic_rs = (void *)rs_data;
+	uint8_t completion_code = 0;
+	oem_device_info_basic_t *basic_rs = (void *)rs_data;
 
 	rs_data[0] = 0x01;	/* Basic Info */
 	rv = cx_send_ipmi_cmd(intf, IPMI_NETFN_OEM_SS,
@@ -2974,7 +2972,7 @@ static int cx_info_main(struct ipmi_intf *intf, int argc, char **argv)
 
 		oem_device_info_card_t *card_rs;
 		card_rs = (void *) rs_data;
-		
+
 		if (cx_is_CalxedaSoc(intf, FALSE)) {
 			rs_data[0] = 0x06;	/* Card Info */
 			rv = cx_send_ipmi_cmd(intf, IPMI_NETFN_OEM_SS,
@@ -3003,7 +3001,7 @@ static int cx_info_main(struct ipmi_intf *intf, int argc, char **argv)
 					printf("  Board Revision: %d\n", card_rs->card_rev);
 				}
 			}
-			
+
 		}
 	} else if (strncmp(argv[0], "node", 4) == 0) {
 		struct oem_device_info_node_s {
