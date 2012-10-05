@@ -1170,7 +1170,8 @@ cx_fabric_cmd_t get_cmd = {
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE, 0},
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE, 
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_ACTUAL, 0},
 	{0, 0, 0, 0, 0}
 };
 
@@ -1540,6 +1541,13 @@ cx_fabric_spec_t override_spec = {
 	NULL
 };
 
+cx_fabric_spec_t actual_spec = {
+	"actual",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_ACTUAL,
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
 cx_fabric_spec_t mac_spec = {
 	"mac",
 	IPMI_CMD_OEM_FABRIC_SPECIFIER_MAC,
@@ -1617,6 +1625,7 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"interface", Cx_Fabric_Arg_Specifier, (void *)&interface_spec},
 	{"link", Cx_Fabric_Arg_Specifier, (void *)&link_spec},
 	{"override", Cx_Fabric_Arg_Specifier, (void *)&override_spec},
+	{"actual", Cx_Fabric_Arg_Specifier, (void *)&actual_spec},
 	{"mac", Cx_Fabric_Arg_Specifier, (void *)&mac_spec},
 	{"tftp", Cx_Fabric_Arg_Specifier, (void *)&tftp_spec},
 	{"host", Cx_Fabric_Arg_Specifier, (void *)&host_spec},
@@ -1639,7 +1648,8 @@ cx_fabric_cmd_t config_get_cmd = {
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME,
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE, 0},
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE, 
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_ACTUAL, 0},
 	{0, 0, 0, 0, 0}
 };
 
@@ -1929,7 +1939,7 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 	cx_fabric_cmd_t *cmd = NULL;
 	cx_fabric_param_t *param = NULL;
 	cx_fabric_value_t param_value;
-	cx_fabric_spec_t *spec[] = { NULL, NULL, NULL, NULL };
+	cx_fabric_spec_t *spec[] = { NULL, NULL, NULL, NULL, NULL };
 	cx_fabric_value_t spec_value[MAX_SPECS];
 	uint8_t spec_count = 0, req_specs = 0, req_specs_found = 0;
 	int data_pos = 0;
