@@ -156,6 +156,8 @@ static void cx_fabric_usage(void)
 		"\n"
 		"  set|get ipinfo tftp <tftp_server_addr> port <tftp_server_port> file <filename>\n"
 		"  set|get ipsrc\n"
+		"  set|get ntp_server <ntp_server_ipaddr>\n"
+		"  set|get ntp_port <ntp_port>\n"
 		"  set|get macaddrs tftp <tftp_server_addr> port <tftp_server_port> file <filename>\n"
 		"  set|get mtu <standard|jumbo>\n"
 		"  set|get uplink <uplink_id> node <node_id> interface <interface_id>\n"
@@ -1138,6 +1140,10 @@ typedef struct {
 #define MAX_PERMITTED_PARAMS 10
 #define MAX_PERMITTED_SPECIFIERS 10
 #define MAX_REQUIRED_SPECIFIERS 10
+
+#define IPMI_CMD_OEM_PARAMETER_UNDEF 0
+#define IPMI_CMD_OEM_SPECIFIER_UNDEF 0
+
 typedef struct {
 	char *keyword;
 	uint8_t ipmi_cmd;
@@ -1362,6 +1368,24 @@ cx_fabric_param_t ipaddr_param = {
 	,
 	Cx_Fabric_Arg_Value_IPV4_Address, 4,
 	cx_fabric_ipv4_printer
+};
+
+cx_fabric_param_t ntp_server_param = {
+	"ntp_server",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
+	{0, 0, 0, 0, 0}
+	,
+	Cx_Fabric_Arg_Value_IPV4_Address, 4,
+	cx_fabric_ipv4_printer
+};
+
+cx_fabric_param_t ntp_port_param = {
+	"ntp_port",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
+	{0, 0, 0, 0, 0}
+	,
+	Cx_Fabric_Arg_Value_Scalar, 2,
+	cx_fabric_scalar_printer
 };
 
 cx_fabric_param_t ipsrc_param = {
@@ -1656,13 +1680,35 @@ cx_fabric_cmd_t config_get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MTU,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_MODE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDRS,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED},
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
+	 IPMI_CMD_OEM_PARAMETER_UNDEF,
+	 IPMI_CMD_OEM_PARAMETER_UNDEF,
+	},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE, 
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_ACTUAL, 0},
-	{0, 0, 0, 0, 0}
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_ACTUAL,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	},
+	{
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	}
 };
 
 cx_fabric_cmd_t config_set_cmd = {
@@ -1674,12 +1720,34 @@ cx_fabric_cmd_t config_set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MTU,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_MODE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDRS,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED},
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
+	 IPMI_CMD_OEM_PARAMETER_UNDEF,
+	 IPMI_CMD_OEM_PARAMETER_UNDEF,
+	},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME,
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE, 0},
-	{0, 0, 0, 0, 0}
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	},
+	{IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	}
 };
 
 cx_fabric_cmd_t update_config_cmd = {
@@ -1708,6 +1776,22 @@ cx_fabric_param_t ipinfo_config_param = {
 	 0, 0, 0},
 	Cx_Fabric_Arg_Invalid, 0,
 	NULL
+};
+
+cx_fabric_param_t ntp_server_config_param = {
+	"ntp_server",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_IPV4_Address, 4,
+	cx_fabric_ipv4_printer
+};
+
+cx_fabric_param_t ntp_port_config_param = {
+	"ntp_port",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 2,
+	cx_fabric_scalar_printer
 };
 
 cx_fabric_param_t ipsrc_config_param = {
@@ -1779,6 +1863,8 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"update_config", Cx_Fabric_Arg_Command, (void *)&update_config_cmd},
 	{"factory_default", Cx_Fabric_Arg_Command, (void *)&factory_default_cmd},
 	{"ipinfo", Cx_Fabric_Arg_Parameter, (void *)&ipinfo_config_param},
+	{"ntp_server", Cx_Fabric_Arg_Parameter, (void *)&ntp_server_config_param},
+	{"ntp_port", Cx_Fabric_Arg_Parameter, (void *)&ntp_port_config_param},
 	{"ipsrc", Cx_Fabric_Arg_Parameter, (void *)&ipsrc_config_param},
 	{"mtu", Cx_Fabric_Arg_Parameter, (void *)&mtu_config_param},
 	{"uplink_mode", Cx_Fabric_Arg_Parameter,
@@ -1987,7 +2073,7 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 	//    the strings "static" or "dynamic"
 
 	while (cur_arg < argc) {
-		//printf("argv[%d] = .%s.\n", cur_arg, argv[cur_arg]);
+	        //printf("argv[%d] = .%s.\n", cur_arg, argv[cur_arg]);
 		arg_type = cx_fabric_find_arg_type(args, argv[cur_arg]);
 
 		if (arg_type == Cx_Fabric_Arg_Command) {
