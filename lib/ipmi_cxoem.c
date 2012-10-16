@@ -143,6 +143,7 @@ static void cx_fabric_usage(void)
 		"\n"
 		"  set|get  <parameter> <value> [node <node_id>]\n"
 		"     where parameter = node_id, ipaddr, netmask, defgw, ipsrc, macaddr\n"
+		"  factory_default node <node_id>\n"
 		"  update_config node <node_id>\n"
 		"\n"
 		"Ex: ipmitool cxoem fabric get ipaddr node 1\n"
@@ -163,6 +164,7 @@ static void cx_fabric_usage(void)
 		"      0 - all interfaces go to Uplink0\n"
 		"      1 - managment interfaces go to Uplink0, server interfaces go to Uplink1\n"
 		"      2 - managment and eth0 interfaces go to Uplink0, eth1 interfaces go to Uplink1\n"
+		"  factory_default\n"
 		"  update_config\n"
 		"\n"
 		"Ex: ipmitool cxoem fabric config get ipinfo tftp 10.1.1.1 port 69 file ipinfo.out\n"
@@ -1155,6 +1157,15 @@ cx_fabric_cmd_t update_cmd = {
 	{0, 0, 0, 0, 0}
 };
 
+cx_fabric_cmd_t factory_default_node_cmd = {
+	"factory_default",
+	IPMI_CMD_OEM_FABRIC_FACTORY_DEFAULT,
+	0, 0,
+	{0, 0, 0, 0, 0},
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0}
+};
+
 cx_fabric_cmd_t get_cmd = {
 	"get",
 	IPMI_CMD_OEM_FABRIC_GET,
@@ -1599,6 +1610,7 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"rm", Cx_Fabric_Arg_Command, (void *)&rm_cmd},
 	{"info", Cx_Fabric_Arg_Command, (void *)&info_cmd},
 	{"update_config", Cx_Fabric_Arg_Command, (void *)&update_cmd},
+	{"factory_default", Cx_Fabric_Arg_Command, (void *)&factory_default_node_cmd},
 	{"ipaddr", Cx_Fabric_Arg_Parameter, (void *)&ipaddr_param},
 	{"ipsrc", Cx_Fabric_Arg_Parameter, (void *)&ipsrc_param},
 	{"netmask", Cx_Fabric_Arg_Parameter, (void *)&netmask_param},
@@ -1673,6 +1685,15 @@ cx_fabric_cmd_t config_set_cmd = {
 cx_fabric_cmd_t update_config_cmd = {
 	"update_config",
 	IPMI_CMD_OEM_FABRIC_UPDATE_CONFIG,
+	0, 0,
+	{0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0}
+};
+
+cx_fabric_cmd_t factory_default_cmd = {
+	"factory_default",
+	IPMI_CMD_OEM_FABRIC_FACTORY_DEFAULT,
 	0, 0,
 	{0, 0, 0, 0, 0},
 	{0, 0, 0, 0, 0},
@@ -1756,6 +1777,7 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"get", Cx_Fabric_Arg_Command, (void *)&config_get_cmd},
 	{"set", Cx_Fabric_Arg_Command, (void *)&config_set_cmd},
 	{"update_config", Cx_Fabric_Arg_Command, (void *)&update_config_cmd},
+	{"factory_default", Cx_Fabric_Arg_Command, (void *)&factory_default_cmd},
 	{"ipinfo", Cx_Fabric_Arg_Parameter, (void *)&ipinfo_config_param},
 	{"ipsrc", Cx_Fabric_Arg_Parameter, (void *)&ipsrc_config_param},
 	{"mtu", Cx_Fabric_Arg_Parameter, (void *)&mtu_config_param},
