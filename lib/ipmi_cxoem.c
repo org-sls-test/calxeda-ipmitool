@@ -142,7 +142,7 @@ static void cx_fabric_usage(void)
 		"Fabric Commands: \n"
 		"\n"
 		"  set|get  <parameter> <value> [node <node_id>]\n"
-		"     where parameter = node_id, ipaddr, netmask, defgw, ipsrc, macaddr, ntp_server, ntp_port\n"
+		"     where parameter = node_id, ipaddr, netmask, defgw, ipsrc, macaddr, ntp_server, ntp_port, link_resilience\n"
 		"  factory_default node <node_id>\n"
 		"  update_config node <node_id>\n"
 		"\n"
@@ -166,6 +166,10 @@ static void cx_fabric_usage(void)
 		"      0 - all interfaces go to Uplink0\n"
 		"      1 - managment interfaces go to Uplink0, server interfaces go to Uplink1\n"
 		"      2 - managment and eth0 interfaces go to Uplink0, eth1 interfaces go to Uplink1\n"
+		"  set|get link_resilience <setting>\n"
+		"    where setting is:\n"
+		"      0 - Resilient: All redundant links are left enabled\n"
+		"      1 - Link Minimal: All redundant links are disabled\n"
 		"  factory_default\n"
 		"  update_config\n"
 		"\n"
@@ -1691,6 +1695,7 @@ cx_fabric_cmd_t config_get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
 	 IPMI_CMD_OEM_PARAMETER_UNDEF,
 	 IPMI_CMD_OEM_PARAMETER_UNDEF,
 	},
@@ -1731,6 +1736,7 @@ cx_fabric_cmd_t config_set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
 	 IPMI_CMD_OEM_PARAMETER_UNDEF,
 	 IPMI_CMD_OEM_PARAMETER_UNDEF,
 	},
@@ -1844,6 +1850,14 @@ cx_fabric_param_t linkspeed_config_param = {
 	cx_fabric_string_printer
 };
 
+cx_fabric_param_t link_resilience_config_param = {
+	"link_resilience",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
 cx_fabric_spec_t tftp_config_spec = {
 	"tftp",
 	IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
@@ -1879,6 +1893,8 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	 (void *)&uplink_mode_config_param},
 	{"macaddrs", Cx_Fabric_Arg_Parameter, (void *)&macaddrs_config_param},
 	{"linkspeed", Cx_Fabric_Arg_Parameter, (void *)&linkspeed_config_param},
+	{"link_resilience", Cx_Fabric_Arg_Parameter,
+	 (void *)&link_resilience_config_param},
 	{"tftp", Cx_Fabric_Arg_Specifier, (void *)&tftp_config_spec},
 	{"port", Cx_Fabric_Arg_Specifier, (void *)&port_config_spec},
 	{"file", Cx_Fabric_Arg_Specifier, (void *)&file_config_spec},
