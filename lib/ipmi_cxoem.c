@@ -142,7 +142,7 @@ static void cx_fabric_usage(void)
 		"Fabric Commands: \n"
 		"\n"
 		"  set|get  <parameter> <value> [node <node_id>]\n"
-		"     where parameter = node_id, ipaddr, netmask, defgw, ipsrc, macaddr\n"
+		"     where parameter = node_id, ipaddr, netmask, defgw, ipsrc, macaddr, ntp_server, ntp_port\n"
 		"  factory_default node <node_id>\n"
 		"  update_config node <node_id>\n"
 		"\n"
@@ -1183,7 +1183,9 @@ cx_fabric_cmd_t get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NODEID,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK},
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
@@ -1201,7 +1203,11 @@ cx_fabric_cmd_t set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_DEFGW,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPSRC,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK},
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
+	 0,
+	 0},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
@@ -1638,6 +1644,8 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"ipaddr", Cx_Fabric_Arg_Parameter, (void *)&ipaddr_param},
 	{"ipsrc", Cx_Fabric_Arg_Parameter, (void *)&ipsrc_param},
 	{"netmask", Cx_Fabric_Arg_Parameter, (void *)&netmask_param},
+	{"ntp_server", Cx_Fabric_Arg_Parameter, (void *)&ntp_server_param},
+	{"ntp_port", Cx_Fabric_Arg_Parameter, (void *)&ntp_port_param},
 	{"defgw", Cx_Fabric_Arg_Parameter, (void *)&defgw_param},
 	{"macaddr", Cx_Fabric_Arg_Parameter, (void *)&macaddr_param},
 	{"nodeid", Cx_Fabric_Arg_Parameter, (void *)&nodeid_param},
