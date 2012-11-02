@@ -158,6 +158,7 @@ static void cx_fabric_usage(void)
 		"  set|get ipsrc\n"
 		"  set|get ntp_server <ntp_server_ipaddr>\n"
 		"  set|get ntp_port <ntp_port>\n"
+		"  set|get supercluster_offset <offset>\n"
 		"  set|get macaddrs tftp <tftp_server_addr> port <tftp_server_port> file <filename>\n"
 		"  set|get mtu <standard|jumbo>\n"
 		"  set|get uplink <uplink_id> node <node_id> interface <interface_id>\n"
@@ -1696,8 +1697,7 @@ cx_fabric_cmd_t config_get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
-	 IPMI_CMD_OEM_PARAMETER_UNDEF,
-	 IPMI_CMD_OEM_PARAMETER_UNDEF,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_SUPERCLUSTER_OFFSET,
 	},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
@@ -1736,7 +1736,11 @@ cx_fabric_cmd_t config_set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
+<<<<<<< HEAD
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
+=======
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_SUPERCLUSTER_OFFSET,
+>>>>>>> In support of:
 	 IPMI_CMD_OEM_PARAMETER_UNDEF,
 	 IPMI_CMD_OEM_PARAMETER_UNDEF,
 	},
@@ -1803,6 +1807,14 @@ cx_fabric_param_t ntp_server_config_param = {
 cx_fabric_param_t ntp_port_config_param = {
 	"ntp_port",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 2,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t supercluster_offset_config_param = {
+	"supercluster_offset",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_SUPERCLUSTER_OFFSET,
 	{0, 0, 0, 0, 0},
 	Cx_Fabric_Arg_Value_Scalar, 2,
 	cx_fabric_scalar_printer
@@ -1887,6 +1899,7 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"ipinfo", Cx_Fabric_Arg_Parameter, (void *)&ipinfo_config_param},
 	{"ntp_server", Cx_Fabric_Arg_Parameter, (void *)&ntp_server_config_param},
 	{"ntp_port", Cx_Fabric_Arg_Parameter, (void *)&ntp_port_config_param},
+	{"supercluster_offset", Cx_Fabric_Arg_Parameter, (void *)&supercluster_offset_config_param},
 	{"ipsrc", Cx_Fabric_Arg_Parameter, (void *)&ipsrc_config_param},
 	{"mtu", Cx_Fabric_Arg_Parameter, (void *)&mtu_config_param},
 	{"uplink_mode", Cx_Fabric_Arg_Parameter,
