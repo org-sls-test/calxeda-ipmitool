@@ -1273,8 +1273,9 @@ cx_fabric_cmd_t set_watch_cmd = {
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_HOST,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FREQUENCY, 0},
-	{IPMI_CMD_OEM_FABRIC_SPECIFIER_HOST, 0, 0, 0, 0}
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FREQUENCY,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_AVERAGING_FREQUENCY},
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_HOST, 0, 0, 0, 0, 0}
 };
 
 cx_fabric_cmd_t clear_watch_cmd = {
@@ -1629,6 +1630,13 @@ cx_fabric_spec_t frequency_spec = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_spec_t averaging_frequency_spec = {
+	"averaging_frequency",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_AVERAGING_FREQUENCY,
+	Cx_Fabric_Arg_Value_Scalar, 2,
+	cx_fabric_scalar_printer
+};
+
 cx_fabric_spec_t file_spec = {
 	"file",
 	IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME,
@@ -1680,6 +1688,7 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"host", Cx_Fabric_Arg_Specifier, (void *)&host_spec},
 	{"port", Cx_Fabric_Arg_Specifier, (void *)&port_spec},
 	{"frequency", Cx_Fabric_Arg_Specifier, (void *)&frequency_spec},
+	{"averaging_frequency", Cx_Fabric_Arg_Specifier, (void *)&averaging_frequency_spec},
 	{"file", Cx_Fabric_Arg_Specifier, (void *)&file_spec},
 	{NULL, Cx_Fabric_Arg_Invalid, (void *)NULL},
 };
@@ -2066,7 +2075,7 @@ cx_fabric_get_value(cx_fabric_arg_type_t val_type, char *arg,
 	return 0;
 }
 
-#define MAX_SPECS 4
+#define MAX_SPECS 8
 int
 cx_fabric_cmd_parser(struct ipmi_intf *intf,
 		     cx_fabric_arg_t * args, int argc, char **argv)
@@ -2079,7 +2088,7 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 	cx_fabric_cmd_t *cmd = NULL;
 	cx_fabric_param_t *param = NULL;
 	cx_fabric_value_t param_value;
-	cx_fabric_spec_t *spec[] = { NULL, NULL, NULL, NULL, NULL };
+	cx_fabric_spec_t *spec[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 	cx_fabric_value_t spec_value[MAX_SPECS];
 	uint8_t spec_count = 0, req_specs = 0, req_specs_found = 0;
 	int data_pos = 0;
