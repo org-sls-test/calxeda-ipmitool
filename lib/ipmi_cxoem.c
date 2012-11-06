@@ -169,11 +169,10 @@ static void cx_fabric_usage(void)
 		"  set|get ipsrc\n"
 		"  set|get ntp_server <ntp_server_ipaddr>\n"
 		"  set|get ntp_port <ntp_port>\n"
-		"  set|get supercluster_offset <offset>\n"
+		"  set|get nodenum_offset <offset>\n"
 		"  set|get macaddrs tftp <tftp_server_addr> port <tftp_server_port> file <filename>\n"
 		"  set|get mtu <standard|jumbo>\n"
 		"  set|get uplink <uplink_id> node <node_id> interface <interface_id>\n"
-		"  set|get uplink_mode <mode>\n"
 		"    where mode is:\n"
 		"      0 - all interfaces go to Uplink0\n"
 		"      1 - managment interfaces go to Uplink0, server interfaces go to Uplink1\n"
@@ -1268,6 +1267,7 @@ typedef enum {
 	Cx_Fabric_Arg_Value_String,
 	Cx_Fabric_Arg_Value_IPV4_Address,
 	Cx_Fabric_Arg_Value_MAC_Address,
+	Cx_Fabric_Arg_Value_Bitmap,
 } cx_fabric_arg_type_t;
 
 typedef struct {
@@ -1276,9 +1276,9 @@ typedef struct {
 	void *data;
 } cx_fabric_arg_t;
 
-#define MAX_PERMITTED_PARAMS 15
-#define MAX_PERMITTED_SPECIFIERS 15
-#define MAX_REQUIRED_SPECIFIERS 15
+#define MAX_PERMITTED_PARAMS 20
+#define MAX_PERMITTED_SPECIFIERS 20
+#define MAX_REQUIRED_SPECIFIERS 20
 
 #define IPMI_CMD_OEM_PARAMETER_UNDEF 0
 #define IPMI_CMD_OEM_SPECIFIER_UNDEF 0
@@ -1298,7 +1298,8 @@ cx_fabric_cmd_t update_cmd = {
 	IPMI_CMD_OEM_FABRIC_UPDATE_CONFIG,
 	0, 0,
 	{0, 0, 0, 0, 0},
-	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 0, 0, 0, 0},
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PARTITION, 0, 0, 0},
 	{0, 0, 0, 0, 0}
 };
 
@@ -1307,7 +1308,8 @@ cx_fabric_cmd_t factory_default_node_cmd = {
 	IPMI_CMD_OEM_FABRIC_FACTORY_DEFAULT,
 	0, 0,
 	{0, 0, 0, 0, 0},
-	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 0, 0, 0, 0},
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_PARTITION,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_CONFIGURATION, 0, 0, 0},
 	{0, 0, 0, 0, 0}
 };
 
@@ -1322,14 +1324,25 @@ cx_fabric_cmd_t get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NODEID,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT},
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_CONFIGURATIONID,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_PROFILEID,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITION_NODES,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITION_RANGE,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_BASE,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_NUM,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE,
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_ACTUAL, 0},
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE, 
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_ACTUAL,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_CONFIGURATION,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PARTITION,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PROFILE},
 	{0, 0, 0, 0, 0}
 };
 
@@ -1342,15 +1355,23 @@ cx_fabric_cmd_t set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_DEFGW,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPSRC,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
-	 0,
-	 0},
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_CONFIGURATIONID,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITIONID,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_PROFILEID,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_BASE,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_NUM,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE, 0},
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_CONFIGURATION,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PARTITION,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PROFILE},
 	{0, 0, 0, 0, 0}
 };
 
@@ -1358,20 +1379,33 @@ cx_fabric_cmd_t add_cmd = {
 	"add",
 	IPMI_CMD_OEM_FABRIC_ADD,
 	1, 1,
-	{IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR, 0, 0, 0, 0},
+	{IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_CONFIGURATIONID, 
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITION_NODES,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITION_RANGE,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITIONID,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_PROFILEID},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0},
-	{IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0, 0}
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PARTITION,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_CONFIGURATION, 0, 0},
+	{0, 0, 0, 0, 0}
 };
 
 cx_fabric_cmd_t rm_cmd = {
 	"rm",
 	IPMI_CMD_OEM_FABRIC_RM,
 	1, 1,
-	{IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR, 0, 0, 0, 0},
+	{IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR, 
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_CONFIGURATIONID, 
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITION_RANGE,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITIONID,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_PROFILEID},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0},
-	{IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0, 0}
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PARTITION,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_CONFIGURATION, 0},
+	{0, 0, 0, 0, 0}
 };
 
 cx_fabric_cmd_t info_cmd = {
@@ -1435,11 +1469,13 @@ typedef uint8_t mac_address_t[MAC_ADDRESS_SIZE];
 typedef uint8_t ipv4_address_t[IPV4_ADDRESS_SIZE];
 
 #define MAX_VAL_STRING 20
+#define MAX_VAL_BITMAP 25
 typedef union {
 	uint8_t scalar[4];
 	mac_address_t mac_addr;
 	ipv4_address_t ipv4_addr;
 	char string[MAX_VAL_STRING];
+	uint8_t bitmap[MAX_VAL_BITMAP];
 } cx_fabric_value_u;
 
 typedef struct {
@@ -1472,6 +1508,46 @@ void cx_fabric_string_printer(void *data, int len)
 	int value = 0;
 
 	printf("%s\n", val->val.string);
+	return;
+}
+
+void cx_fabric_bitmap_printer(void *data, int len)
+{
+	int i, in_range = 0, range_start = 0;
+	int first = 1;
+	cx_fabric_value_t *val = (cx_fabric_value_t *) data;
+
+	for (i = 0; i < MAX_VAL_BITMAP * 8; i++) {
+		if (val->val.bitmap[i/8] & (1 << (i%8))) {
+			if (in_range) {
+				continue;
+			} else {
+				if (first) {
+					printf("%d", i);
+					first = 0;
+				} else {
+					printf(",%d", i);
+				}
+				range_start = i;
+				in_range = 1;
+			}
+		} else if (in_range) {
+			if (range_start != (i-1)) {
+				printf("-%d", i-1);
+			}
+			in_range = 0;
+		}
+	}
+
+	if (in_range) {
+		if (range_start != (i-1)) {
+			printf("-%d", i-1);
+		}
+	} else if (first) {
+		printf("No nodes in partition");
+	}
+
+	printf("\n");
 	return;
 }
 
@@ -1579,11 +1655,27 @@ cx_fabric_param_t linkspeed_param = {
 	cx_fabric_string_printer
 };
 
+cx_fabric_param_t link_resilience_param = {
+	"link_resilience",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t linkspeed_policy_param = {
+	"ls_policy",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
 cx_fabric_param_t uplink_param = {
 	"uplink",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK,
-	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0}
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
+	 0, 0, 0, 0}
 	,
 	Cx_Fabric_Arg_Value_Scalar, 1,
 	cx_fabric_scalar_printer
@@ -1702,6 +1794,64 @@ cx_fabric_param_t uplink_watch_param = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_param_t configurationid_param = {
+	"configid",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_CONFIGURATIONID,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t partitionid_param = {
+	"partid",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITIONID,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t profileid_param = {
+	"profileid",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_PROFILEID,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t partition_nodes_param = {
+	"part_nodes",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITION_NODES,
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_PARTITION,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_CONFIGURATION, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t partition_range_param = {
+	"part_range",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITION_RANGE,
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_PARTITION,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_CONFIGURATION, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Bitmap, MAX_VAL_BITMAP,
+	cx_fabric_bitmap_printer
+};
+
+cx_fabric_param_t ipaddr_base_param = {
+	"ipaddr_base",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_BASE,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_IPV4_Address, 4,
+	cx_fabric_ipv4_printer
+};
+
+cx_fabric_param_t ipaddr_num_param = {
+	"ipaddr_num",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_NUM,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 2,
+	cx_fabric_scalar_printer
+};
+
 cx_fabric_spec_t node_spec = {
 	"node",
 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
@@ -1786,6 +1936,27 @@ cx_fabric_spec_t file_spec = {
 	cx_fabric_string_printer
 };
 
+cx_fabric_spec_t configuration_spec = {
+	"config",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_CONFIGURATION,
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_spec_t partition_spec = {
+	"part",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_PARTITION,
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_spec_t profile_spec = {
+	"profile",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_PROFILE,
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
 cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"set_watch", Cx_Fabric_Arg_Command, (void *)&set_watch_cmd},
 	{"clear_watch", Cx_Fabric_Arg_Command, (void *)&clear_watch_cmd},
@@ -1796,6 +1967,8 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"info", Cx_Fabric_Arg_Command, (void *)&info_cmd},
 	{"update_config", Cx_Fabric_Arg_Command, (void *)&update_cmd},
 	{"factory_default", Cx_Fabric_Arg_Command, (void *)&factory_default_node_cmd},
+	{"ipaddr_base", Cx_Fabric_Arg_Parameter, (void *)&ipaddr_base_param},
+	{"ipaddr_num", Cx_Fabric_Arg_Parameter, (void *)&ipaddr_num_param},
 	{"ipaddr", Cx_Fabric_Arg_Parameter, (void *)&ipaddr_param},
 	{"ipsrc", Cx_Fabric_Arg_Parameter, (void *)&ipsrc_param},
 	{"netmask", Cx_Fabric_Arg_Parameter, (void *)&netmask_param},
@@ -1805,6 +1978,8 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"macaddr", Cx_Fabric_Arg_Parameter, (void *)&macaddr_param},
 	{"nodeid", Cx_Fabric_Arg_Parameter, (void *)&nodeid_param},
 	{"linkspeed", Cx_Fabric_Arg_Parameter, (void *)&linkspeed_param},
+	{"link_resilience", Cx_Fabric_Arg_Parameter, (void *)&link_resilience_param},
+	{"ls_policy", Cx_Fabric_Arg_Parameter, (void *)&linkspeed_policy_param},
 	{"linkmap", Cx_Fabric_Arg_Parameter, (void *)&linkmap_param},
 	{"depth_chart", Cx_Fabric_Arg_Parameter, (void *)&depth_chart_param},
 	{"routing_table", Cx_Fabric_Arg_Parameter, (void *)&routing_table_param},
@@ -1821,6 +1996,11 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"uplink_stats", Cx_Fabric_Arg_Parameter, (void *)&uplink_stats_param},
 	{"uplink_watch", Cx_Fabric_Arg_Parameter, (void *)&uplink_watch_param},
 	{"uplink", Cx_Fabric_Arg_Parameter, (void *)&uplink_param},
+	{"configid", Cx_Fabric_Arg_Parameter, (void *)&configurationid_param},
+	{"partid", Cx_Fabric_Arg_Parameter, (void *)&partitionid_param},
+	{"profileid", Cx_Fabric_Arg_Parameter, (void *)&profileid_param},
+	{"part_nodes", Cx_Fabric_Arg_Parameter, (void *)&partition_nodes_param},
+	{"part_range", Cx_Fabric_Arg_Parameter, (void *)&partition_range_param},
 	{"node", Cx_Fabric_Arg_Specifier, (void *)&node_spec},
 	{"interface", Cx_Fabric_Arg_Specifier, (void *)&interface_spec},
 	{"link", Cx_Fabric_Arg_Specifier, (void *)&link_spec},
@@ -1833,6 +2013,9 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"frequency", Cx_Fabric_Arg_Specifier, (void *)&frequency_spec},
 	{"averaging_frequency", Cx_Fabric_Arg_Specifier, (void *)&averaging_frequency_spec},
 	{"file", Cx_Fabric_Arg_Specifier, (void *)&file_spec},
+	{"config", Cx_Fabric_Arg_Specifier, (void *)&configuration_spec},
+	{"part", Cx_Fabric_Arg_Specifier, (void *)&partition_spec},
+	{"profile", Cx_Fabric_Arg_Specifier, (void *)&profile_spec},
 	{NULL, Cx_Fabric_Arg_Invalid, (void *)NULL},
 };
 
@@ -1849,7 +2032,7 @@ cx_fabric_cmd_t config_get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_SUPERCLUSTER_OFFSET,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_NODENUM_OFFSET,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
 	},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
@@ -1890,7 +2073,7 @@ cx_fabric_cmd_t config_set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_SUPERCLUSTER_OFFSET,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_NODENUM_OFFSET,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
 	},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
@@ -1959,9 +2142,9 @@ cx_fabric_param_t ntp_port_config_param = {
 	cx_fabric_scalar_printer
 };
 
-cx_fabric_param_t supercluster_offset_config_param = {
-	"supercluster_offset",
-	IPMI_CMD_OEM_FABRIC_PARAMETER_SUPERCLUSTER_OFFSET,
+cx_fabric_param_t nodenum_offset_config_param = {
+	"nodenum_offset",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_NODENUM_OFFSET,
 	{0, 0, 0, 0, 0},
 	Cx_Fabric_Arg_Value_Scalar, 2,
 	cx_fabric_scalar_printer
@@ -2052,7 +2235,7 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"ipinfo", Cx_Fabric_Arg_Parameter, (void *)&ipinfo_config_param},
 	{"ntp_server", Cx_Fabric_Arg_Parameter, (void *)&ntp_server_config_param},
 	{"ntp_port", Cx_Fabric_Arg_Parameter, (void *)&ntp_port_config_param},
-	{"supercluster_offset", Cx_Fabric_Arg_Parameter, (void *)&supercluster_offset_config_param},
+	{"nodenum_offset", Cx_Fabric_Arg_Parameter, (void *)&nodenum_offset_config_param},
 	{"ipsrc", Cx_Fabric_Arg_Parameter, (void *)&ipsrc_config_param},
 	{"mtu", Cx_Fabric_Arg_Parameter, (void *)&mtu_config_param},
 	{"uplink_mode", Cx_Fabric_Arg_Parameter,
@@ -2114,6 +2297,12 @@ cx_fabric_find_arg_type(cx_fabric_arg_t * arg_type_list, char *arg)
 		// Probably...
 		return Cx_Fabric_Arg_Value_String;
 	}
+
+	// Is it a node range?
+	if (strchr(arg, '-') || strchr(arg, ',')) {
+		return Cx_Fabric_Arg_Value_Bitmap;
+	}
+
 	// Is it scalar?
 	val = strtol(arg, NULL, 10);
 	if (errno == 0) {
@@ -2175,12 +2364,35 @@ cx_fabric_spec_t *cx_fabric_get_spec(cx_fabric_arg_t * arg_type_list, char *arg)
 	return NULL;
 }
 
+int ranges_to_bitmap(char *arg, uint8_t *bitmap)
+{
+	int start, end, i = 0;
+	char *ptr = arg;
+	while(*ptr) {
+		//printf("ptr = %s\n", ptr);
+		start = strtol(ptr, &ptr, 10);
+		if (*ptr == '-') {
+			ptr++;
+			end = strtol(ptr, &ptr, 10);
+			for (i = start; i <= end; i++) {
+				bitmap[i/8] |= (1 << (i%8));
+			}
+		} else {
+			bitmap[start/8] |= (1 << (start%8));
+		}
+
+		if (*ptr == ',') {
+			ptr++;
+		}
+	}
+}
 
 int
 cx_fabric_get_value(cx_fabric_arg_type_t val_type, char *arg,
 		    cx_fabric_value_t * value)
 {
 	int val;
+	int i;
 
 	value->val_type = val_type;
 	switch (val_type) {
@@ -2218,6 +2430,11 @@ cx_fabric_get_value(cx_fabric_arg_type_t val_type, char *arg,
 			value->val.mac_addr[2], value->val.mac_addr[3],
 			value->val.mac_addr[4], value->val.mac_addr[5]);
 
+		break;
+	case Cx_Fabric_Arg_Value_Bitmap:
+		memset(value->val.bitmap, 0, MAX_VAL_BITMAP);
+		ranges_to_bitmap(arg, value->val.bitmap);
+		value->val_len = MAX_VAL_BITMAP;
 		break;
 	default:
 		return -1;
@@ -2297,6 +2514,9 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 				arg_type = cx_fabric_find_arg_type(args,
 								   argv
 								   [cur_arg]);
+				if ((arg_type == Cx_Fabric_Arg_Value_Scalar) && (param->val_type == Cx_Fabric_Arg_Value_Bitmap)) {
+					arg_type = Cx_Fabric_Arg_Value_Bitmap;
+				}
 				if (arg_type != param->val_type) {
 					lprintf(LOG_ERR,
 						"Invalid value type for parameter %s\n",
@@ -2487,6 +2707,15 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 				}
 				msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
 				break;
+			case Cx_Fabric_Arg_Value_Bitmap:
+				msg_data[data_pos++] =
+				    MSG_PARAM_VAL_START_BITMAP;
+				for (i = 0; i < param_value.val_len; i++) {
+					msg_data[data_pos++] =
+					    param_value.val.bitmap[i];
+				}
+				msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
+				break;
 			}
 		}
 	}
@@ -2518,6 +2747,15 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 			for (i = 0; i < spec_value[j].val_len; i++) {
 				msg_data[data_pos++] =
 				    spec_value[j].val.mac_addr[i];
+			}
+			msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
+			break;
+		case Cx_Fabric_Arg_Value_Bitmap:
+			msg_data[data_pos++] =
+			    MSG_PARAM_VAL_START_BITMAP;
+			for (i = 0; i < param_value.val_len; i++) {
+				msg_data[data_pos++] =
+				    param_value.val.bitmap[i];
 			}
 			msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
 			break;
