@@ -148,6 +148,34 @@ struct cx_fw_info_rs {
 
 
 /*
+ * OEM info rs structs
+ */
+
+typedef union cx_info_basic_u {
+	/* Revision 1 */
+	struct {
+		uint32_t iana;
+		uint8_t parameter_revision;
+		uint8_t ecme_major_version;
+		uint8_t ecme_minor_version;
+		uint8_t ecme_revision;
+		uint32_t ecme_build_number;
+		uint32_t ecme_timestamp;
+		char firmware_version[32];
+	} __attribute__ ((packed)) rev1;
+
+	/* Revision 2 -- replaced ECME version with a string */
+	struct {
+		uint32_t iana;
+		uint8_t parameter_revision;
+		char ecme_version[32];
+		uint32_t ecme_timestamp;
+		char firmware_version[32];
+	} __attribute__ ((packed)) rev2;
+} cx_info_basic_t;
+
+
+/*
  * Prototypes
  */
 int ipmi_cxoem_main(struct ipmi_intf *, int, char **);
