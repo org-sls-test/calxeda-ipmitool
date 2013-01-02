@@ -100,6 +100,15 @@ const struct valstr cx_tftp_status[] = {
 	{0x04, "Canceled"},
 };
 
+const char *tps_table[] = {
+	"(Init)",
+	"(Cold)",
+	"(Warm)",
+	"(Hot)",
+	"(Critical)",
+	"(Shutdown)",
+};
+
 static void ipmi_cxoem_usage(void)
 {
 	lprintf(LOG_NOTICE,
@@ -187,6 +196,7 @@ static void cx_feature_usage(void)
 		"Feature to Enable/Disable/Query are:\n"
 		"  selaging : SEL Aging or Circular SEL buffer\n"
 		"  hwwd : Hardware Watchdog\n"
+		"  tps: Thermal Protection System (Status Only)\n"
 		"\n"
 		"Ex: ipmitool cxoem feature status selaging\n"
 		"Ex: ipmitool cxoem feature enable hwwd\n" "\n");
@@ -3265,6 +3275,17 @@ static int cx_info_main(struct ipmi_intf *intf, int argc, char **argv)
 	return rv;
 }
 
+static const char *tps_to_string(unsigned char state)
+{
+	int num_elements;
+
+	num_elements = sizeof(tps_table)/sizeof(*tps_table);
+	if (state < num_elements) {
+		return tps_table[state];
+	}
+	return "";
+}
+
 static int cx_feature_main(struct ipmi_intf *intf, int argc, char **argv)
 {
 	uint8_t rs_data[MAX_MSG_DATA_SIZE];
@@ -3276,6 +3297,7 @@ static int cx_feature_main(struct ipmi_intf *intf, int argc, char **argv)
 	const struct valstr oem_features[] = {
 		{0x01, "selaging"},
 		{0x02, "hwwd"},
+		{0x03, "tps"},
 		{0x00, "Invalid"},	// make sure this is the last entry
 	};
 	int rv = 0;
@@ -3329,9 +3351,14 @@ static int cx_feature_main(struct ipmi_intf *intf, int argc, char **argv)
 				      &completion_code);
 		if (0 == rv) {
 			if (get_op) {
-				printf("   %s is %s\n",
-				       oem_features[feature_index].str,
-				       rs_data[0] ? "enabled" : "disabled");
+				if (2 == feature_index) {
+					printf("   %s state is %d %s\n", oem_features[feature_index].str,
+						   rs_data[0], tps_to_string(rs_data[0]));
+				} else {
+					printf("   %s is %s\n",
+						   oem_features[feature_index].str,
+						   rs_data[0] ? "enabled" : "disabled");
+				}
 			}
 		}
 	}
