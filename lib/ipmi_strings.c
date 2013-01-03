@@ -67,6 +67,7 @@ const struct valstr ipmi_oem_info[] = {
    { IPMI_OEM_NOKIA_SIEMENS_NETWORKS, "Nokia Siemens Networks" },
    { IPMI_OEM_BULL,                   "Bull Company" },
    { IPMI_OEM_PPS,                    "Pigeon Point Systems" },
+   { IPMI_OEM_CALXEDA,                "Calxeda" },
    { 0xffff , NULL },
 };
 
