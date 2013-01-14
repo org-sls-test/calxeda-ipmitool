@@ -1152,9 +1152,9 @@ typedef struct {
 	void *data;
 } cx_fabric_arg_t;
 
-#define MAX_PERMITTED_PARAMS 10
-#define MAX_PERMITTED_SPECIFIERS 10
-#define MAX_REQUIRED_SPECIFIERS 10
+#define MAX_PERMITTED_PARAMS 15
+#define MAX_PERMITTED_SPECIFIERS 15
+#define MAX_REQUIRED_SPECIFIERS 15
 
 #define IPMI_CMD_OEM_PARAMETER_UNDEF 0
 #define IPMI_CMD_OEM_SPECIFIER_UNDEF 0
@@ -1260,7 +1260,8 @@ cx_fabric_cmd_t info_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_STATS,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MAC_STATS,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MAC_CHANNEL_STATS,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_STATS, 0},
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_STATS,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS},
 	{ IPMI_CMD_OEM_FABRIC_SPECIFIER_MAC,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
@@ -1498,6 +1499,14 @@ cx_fabric_param_t routing_table_param = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_param_t link_users_param = {
+	"link_users",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
 cx_fabric_param_t global_watch_param = {
 	"global_watch",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_GLOBAL_WATCH,
@@ -1676,6 +1685,7 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"linkmap", Cx_Fabric_Arg_Parameter, (void *)&linkmap_param},
 	{"depth_chart", Cx_Fabric_Arg_Parameter, (void *)&depth_chart_param},
 	{"routing_table", Cx_Fabric_Arg_Parameter, (void *)&routing_table_param},
+	{"link_users", Cx_Fabric_Arg_Parameter, (void *)&link_users_param},
 	{"global_watch", Cx_Fabric_Arg_Parameter, (void *)&global_watch_param},
 	{"link_stats", Cx_Fabric_Arg_Parameter, (void *)&link_stats_param},
 	{"link_watch", Cx_Fabric_Arg_Parameter, (void *)&link_watch_param},
@@ -1717,6 +1727,7 @@ cx_fabric_cmd_t config_get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_SUPERCLUSTER_OFFSET,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
 	},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
@@ -1757,6 +1768,7 @@ cx_fabric_cmd_t config_set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_SUPERCLUSTER_OFFSET,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
 	},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
@@ -1884,6 +1896,14 @@ cx_fabric_param_t link_resilience_config_param = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_param_t linkspeed_policy_config_param = {
+	"ls_policy",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
 cx_fabric_spec_t tftp_config_spec = {
 	"tftp",
 	IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
@@ -1922,6 +1942,8 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"linkspeed", Cx_Fabric_Arg_Parameter, (void *)&linkspeed_config_param},
 	{"link_resilience", Cx_Fabric_Arg_Parameter,
 	 (void *)&link_resilience_config_param},
+	{"ls_policy", Cx_Fabric_Arg_Parameter,
+	 (void *)&linkspeed_policy_config_param},
 	{"tftp", Cx_Fabric_Arg_Specifier, (void *)&tftp_config_spec},
 	{"port", Cx_Fabric_Arg_Specifier, (void *)&port_config_spec},
 	{"file", Cx_Fabric_Arg_Specifier, (void *)&file_config_spec},
