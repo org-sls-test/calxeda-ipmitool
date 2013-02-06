@@ -108,10 +108,11 @@
 /*
  * CX-defined constants
  */
-#define CXOEM_FWDL_START      1
-#define CXOEM_FWDL_STOP       2
-#define CXOEM_FWUL_START      3
-#define CXOEM_FWUL_STOP       4
+#define CXOEM_FW_DOWNLOAD       1
+#define CXOEM_FW_STOP           2
+#define CXOEM_FW_UPLOAD         3
+#define CXOEM_FW_REGISTER_READ  4
+#define CXOEM_FW_REGISTER_WRITE 5
 
 
 static const int CXOEM_SUCCESS = 0;

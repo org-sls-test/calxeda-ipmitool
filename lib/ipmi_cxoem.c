@@ -125,20 +125,22 @@ static void cx_fw_usage(void)
 		"\n"
 		"Firmware Commands: \n"
 		"\n"
-		"  download   <filename> <partition> <type> <tftp ip[:port]>\n"
-		"  upload     <partition> <filename> <type> <tftp ip[:port]>\n"
-		"  activate   <partition>\n"
-		"  invalidate <partition>\n"
-		"  makenext   <partition>\n"
-		"  flags      <partition> <flags> \n"
-		"  status     <job id>      - returns status of the transfer by <job id>\n"
-		"  check      <partition>   - force a crc check\n"
-		"  cancel     <job id>\n"
-		"  info       \n"
-		"  get        <filename> <offset> <size> <tftp ip[:port]>\n"
-		"  put        <filename> <offset> <size> <tftp ip[:port]>\n"
-		"  reset      Reset to factory default\n"
-		"  version    <version_str> - set the firmware version\n"
+		"  download       <filename> <partition> <type> tftp <ip[:port]>\n"
+		"  upload         <partition> <filename> <type> tftp <ip[:port]>\n"
+		"  register read  <partition> <filename> <type>\n"
+		"  register write <partition> <filename> <type>\n"
+		"  activate       <partition>\n"
+		"  invalidate     <partition>\n"
+		"  makenext       <partition>\n"
+		"  flags          <partition> <flags> \n"
+		"  status         <job id>      - returns status of the transfer by <job id>\n"
+		"  check          <partition>   - force a crc check\n"
+		"  cancel         <job id>\n"
+		"  info\n"
+		"  get            <filename> <offset> <size> tftp <ip[:port]>\n"
+		"  put            <filename> <offset> <size> tftp <ip[:port]>\n"
+		"  reset          Reset to factory default\n"
+		"  version        <version_str> - set the firmware version\n"
 		"\n");
 }
 
@@ -216,7 +218,7 @@ int cx_fw_download(struct ipmi_intf *intf, char *filename, int partition,
 	req.msg.cmd = IPMI_CMD_OEM_FW_DOWNLOAD;
 	msg_data[0] = type;
 	msg_data[1] = partition;
-	msg_data[2] = CXOEM_FWDL_START;
+	msg_data[2] = CXOEM_FW_DOWNLOAD;
 	msg_data[3] = 0;
 	msg_data[4] = 0;
 	msg_data[5] = 6;	// ipv4 addresses by default (for now)
@@ -265,7 +267,7 @@ int cx_fw_upload(struct ipmi_intf *intf, char *filename, int partition,
 	req.msg.cmd = IPMI_CMD_OEM_FW_DOWNLOAD;
 	msg_data[0] = type;
 	msg_data[1] = partition;
-	msg_data[2] = CXOEM_FWUL_START;
+	msg_data[2] = CXOEM_FW_UPLOAD;
 	msg_data[3] = 0;
 	msg_data[4] = 0;
 	msg_data[5] = 6;	// ipv4 addresses by default (for now)
@@ -297,6 +299,80 @@ int cx_fw_upload(struct ipmi_intf *intf, char *filename, int partition,
 	}
 
 	return rc;
+}
+
+int cx_fw_register_read(struct ipmi_intf *intf, char *filename, int partition,
+			int type)
+{
+	struct ipmi_rs *rsp;
+	struct ipmi_rq req;
+	uint8_t msg_data[64];
+
+	memset(&req, 0, sizeof(req));
+	memset(msg_data, 0, 64);
+	req.msg.netfn = IPMI_NETFN_OEM_SS;
+	req.msg.cmd = IPMI_CMD_OEM_FW_DOWNLOAD;
+	msg_data[0] = type;
+	msg_data[1] = partition;
+	msg_data[2] = CXOEM_FW_REGISTER_READ;
+	msg_data[12] = fmin(strlen(filename) + 1, 51);
+	memcpy(&msg_data[13], filename, msg_data[12] - 1);
+	req.msg.data = msg_data;
+	req.msg.data_len = msg_data[12] + 13;
+
+	rsp = intf->sendrecv(intf, &req);
+	if (rsp == NULL) {
+		lprintf(LOG_ERR, "Error     : No response");
+		return -1;
+	}
+	if (rsp->ccode > 0) {
+		lprintf(LOG_ERR, "Error     : %s",
+			val2str(rsp->ccode, completion_code_vals));
+		return -1;
+	}
+	if (rsp->data_len != 0) {
+		lprintf(LOG_ERR, "Error     : Invalid response size");
+		return -1;
+	}
+
+	return CXOEM_SUCCESS;
+}
+
+int cx_fw_register_write(struct ipmi_intf *intf, char *filename, int partition,
+			 int type)
+{
+	struct ipmi_rs *rsp;
+	struct ipmi_rq req;
+	uint8_t msg_data[64];
+
+	memset(&req, 0, sizeof(req));
+	memset(msg_data, 0, 64);
+	req.msg.netfn = IPMI_NETFN_OEM_SS;
+	req.msg.cmd = IPMI_CMD_OEM_FW_DOWNLOAD;
+	msg_data[0] = type;
+	msg_data[1] = partition;
+	msg_data[2] = CXOEM_FW_REGISTER_WRITE;
+	msg_data[12] = fmin(strlen(filename) + 1, 51);
+	memcpy(&msg_data[13], filename, msg_data[12] - 1);
+	req.msg.data = msg_data;
+	req.msg.data_len = msg_data[12] + 13;
+
+	rsp = intf->sendrecv(intf, &req);
+	if (rsp == NULL) {
+		lprintf(LOG_ERR, "Error     : No response");
+		return -1;
+	}
+	if (rsp->ccode > 0) {
+		lprintf(LOG_ERR, "Error     : %s",
+			val2str(rsp->ccode, completion_code_vals));
+		return -1;
+	}
+	if (rsp->data_len != 0) {
+		lprintf(LOG_ERR, "Error     : Invalid response size");
+		return -1;
+	}
+
+	return CXOEM_SUCCESS;
 }
 
 int cx_fw_raw(struct ipmi_intf *intf, char *filename, unsigned int address,
@@ -862,6 +938,54 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 			}
 			cx_fw_upload(intf, filename, partition, type,
 				     ip1, ip2, ip3, ip4, port);
+		} else {
+			cx_fw_usage();
+			return -1;
+		}
+	} else if (strncmp(argv[0], "register", 8) == 0) {
+		if (argc == 5) {
+			partition = strtol(argv[2], (char **)NULL, 10);
+			if (!errno) {
+				printf("Partition : %d\n", partition);
+			} else {
+				lprintf(LOG_ERR,
+					"<partition> doesn't look like a valid value\n");
+				return -1;
+			}
+
+			if (strlen(argv[3]) < 32) {
+				strcpy((char *)filename, argv[3]);
+				printf("File Name : %s\n", filename);
+			} else {
+				lprintf(LOG_ERR,
+					"File name must be smaller than 32 bytes\n");
+			}
+
+			if (isdigit(argv[4][0])) {
+				type = strtol(argv[4], (char **)NULL, 10);
+			} else {
+				type = str2val(argv[4], cx_ptypes);
+				if (type < 1 || type > 14)
+					errno = -1;
+			}
+			if (!errno) {
+				printf("Type      : %d\n", type);
+			} else {
+				lprintf(LOG_ERR,
+					"<type> doesn't look like a valid value\n");
+				return -1;
+			}
+
+			if (strncmp(argv[1], "read", 4) == 0) {
+				cx_fw_register_read(intf, filename, partition,
+						    type);
+			} else if(strncmp(argv[1], "write", 5) == 0) {
+				cx_fw_register_write(intf, filename, partition,
+						     type);
+			} else {
+				cx_fw_usage();
+				return -1;
+			}
 		} else {
 			cx_fw_usage();
 			return -1;
