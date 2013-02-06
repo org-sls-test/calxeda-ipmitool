@@ -1391,8 +1391,7 @@ cx_fabric_cmd_t info_cmd = {
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME},
-	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
-	IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 0, 0, 0}
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 0, 0, 0, 0}
 };
 
 cx_fabric_cmd_t set_watch_cmd = {
@@ -1939,9 +1938,7 @@ cx_fabric_cmd_t factory_default_cmd = {
 cx_fabric_param_t ipinfo_config_param = {
 	"ipinfo",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_IPINFO,
-	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME,
-	 0, 0, 0},
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 0, 0, 0, 0},
 	Cx_Fabric_Arg_Invalid, 0,
 	NULL
 };
@@ -1997,9 +1994,7 @@ cx_fabric_param_t uplink_mode_config_param = {
 cx_fabric_param_t macaddrs_config_param = {
 	"macaddrs",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDRS,
-	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME,
-	 0, 0, 0},
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 0, 0, 0},
 	Cx_Fabric_Arg_Invalid, 0,
 	NULL
 };
