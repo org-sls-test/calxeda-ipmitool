@@ -1377,7 +1377,7 @@ int cx_fru_main(struct ipmi_intf *intf, int argc, char **argv)
 		n_matched = sscanf(argv[1],
 		                   "%d.%d.%d.%d:%d",
 		                   &ip1, &ip2, &ip3, &ip4,
-			           &port)
+			           &port);
 		if ( n_matched != 5) {
 			lprintf(LOG_ERR, "Invalid IP address: %s", argv[1]);
 				return -1;
