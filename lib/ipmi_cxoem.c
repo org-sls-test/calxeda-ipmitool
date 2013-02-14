@@ -1335,7 +1335,8 @@ cx_fabric_cmd_t get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_BASE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_NUM,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_CUSTOMER_MACADDR},
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_CUSTOMER_MACADDR,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
@@ -1366,7 +1367,8 @@ cx_fabric_cmd_t set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_PROFILEID,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_BASE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_NUM,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY},
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
@@ -1668,6 +1670,14 @@ cx_fabric_param_t link_resilience_param = {
 cx_fabric_param_t linkspeed_policy_param = {
 	"ls_policy",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t link_users_factor_param = {
+	"lu_factor",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR,
 	{0, 0, 0, 0, 0},
 	Cx_Fabric_Arg_Value_Scalar, 1,
 	cx_fabric_scalar_printer
@@ -1992,6 +2002,8 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"linkspeed", Cx_Fabric_Arg_Parameter, (void *)&linkspeed_param},
 	{"link_resilience", Cx_Fabric_Arg_Parameter, (void *)&link_resilience_param},
 	{"ls_policy", Cx_Fabric_Arg_Parameter, (void *)&linkspeed_policy_param},
+	{"lu_factor", Cx_Fabric_Arg_Parameter,
+	 (void *)&link_users_factor_param},
 	{"linkmap", Cx_Fabric_Arg_Parameter, (void *)&linkmap_param},
 	{"depth_chart", Cx_Fabric_Arg_Parameter, (void *)&depth_chart_param},
 	{"routing_table", Cx_Fabric_Arg_Parameter, (void *)&routing_table_param},
@@ -2046,6 +2058,7 @@ cx_fabric_cmd_t config_get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NODENUM_OFFSET,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR,
 	},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
@@ -2087,6 +2100,7 @@ cx_fabric_cmd_t config_set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NODENUM_OFFSET,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR,
 	},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
@@ -2258,6 +2272,8 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	 (void *)&link_resilience_config_param},
 	{"ls_policy", Cx_Fabric_Arg_Parameter,
 	 (void *)&linkspeed_policy_config_param},
+	{"lu_factor", Cx_Fabric_Arg_Parameter,
+	 (void *)&link_users_factor_param},
 	{"tftp", Cx_Fabric_Arg_Specifier, (void *)&tftp_config_spec},
 	{"port", Cx_Fabric_Arg_Specifier, (void *)&port_config_spec},
 	{"file", Cx_Fabric_Arg_Specifier, (void *)&file_config_spec},
