@@ -73,10 +73,6 @@
 #define CX_DATA_BAD_LENGTH -2
 #define CX_DATA_OK 0
 
-#define FRU_NODE_DEVICE_ID			2
-#define FRU_SLOT_DEVICE_ID			3
-
-
 const struct valstr cx_ptypes[] = {
 	{0x00, "DEL"},
 	{0x01, "DEL1"},
@@ -118,7 +114,7 @@ static void ipmi_cxoem_usage(void)
 	lprintf(LOG_NOTICE,
 		"Usage: ipmitool cxoem <command> [option...]\n"
 		"\n"
-		"Commands: \n" "\n" "  fw fabric mac log data info feature fru\n");
+		"Commands: \n" "\n" "  fw fabric mac log data info feature\n");
 }
 
 static void cx_fw_usage(void)
@@ -145,18 +141,6 @@ static void cx_fw_usage(void)
 		"  put            <filename> <offset> <size> tftp <ip[:port]>\n"
 		"  reset          Reset to factory default\n"
 		"  version        <version_str> - set the firmware version\n"
-		"\n");
-}
-
-static void cx_fru_usage(void)
-{
-	lprintf(LOG_NOTICE,
-		"\n"
-		"Usage: ipmitool cxoem fru <command> [option...]\n"
-		"\n"
-		"Fru Commands: \n"
-		"\n"
-		"  download   <filename> <tftp ip[:port]>\n"
 		"\n");
 }
 
@@ -1274,135 +1258,6 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 
 	return rv;
 }
-
-
-
-
-
-int cx_fru_download(struct ipmi_intf *intf, uint8_t device, char *filename,
-		    int ip1, int ip2, int ip3, int ip4, int port)
-{
-	int rc = CXOEM_SUCCESS;
-	struct ipmi_rs *rsp;
-	struct ipmi_rq req;
-	uint8_t msg_data[64];
-
-	memset(&req, 0, sizeof(req));
-	memset(msg_data, 0, 64);
-	req.msg.netfn = IPMI_NETFN_OEM_SS;
-	req.msg.cmd = IPMI_CMD_OEM_FRU_DOWNLOAD;
-	msg_data[0] = CXOEM_FRUDL_START;
-	msg_data[1] = device;
-	msg_data[2] = 0;
-	msg_data[3] = 0;
-	msg_data[4] = 6;	// ipv4 addresses by default (for now)
-	msg_data[5] = ip1;
-	msg_data[6] = ip2;
-	msg_data[7] = ip3;
-	msg_data[8] = ip4;
-	msg_data[9] = (port & 0xff);
-	msg_data[10] = (port >> 8) & 0xff;
-	msg_data[11] = strlen(filename) + 1;
-	memcpy(&msg_data[12], filename, msg_data[11]);
-	req.msg.data = msg_data;
-	req.msg.data_len = msg_data[11] + 12;
-
-	rsp = intf->sendrecv(intf, &req);
-	if (rsp == NULL) {
-		lprintf(LOG_ERR, "Error starting fru download");
-		return -1;
-	}
-
-	if (rsp->ccode == 0) {
-		uint16_t handle;
-		handle = (unsigned int)rsp->data[0];
-		handle |= (unsigned int)(rsp->data[1] << 8);
-		printf("TFTP Handle ID:  %d\n", handle);
-	} else if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "Start FRU download failed: %s",
-			val2str(rsp->ccode, completion_code_vals));
-		return -1;
-	}
-
-	return rc;
-}
-
-
-int cx_fru_main(struct ipmi_intf *intf, int argc, char **argv)
-{
-	char filename[65];
-	int rv = 0;
-	int partition, type;
-	int ip1 = 0, ip2 = 0, ip3 = 0, ip4 = 0;
-	int port = 0;
-	int n_matched = 0;
-
-	errno = 0;
-
-	if (argc < 1 || strncmp(argv[0], "help", 4) == 0) {
-		cx_fru_usage();
-		return 0;
-	}
-
-	if (strncmp(argv[0], "download", 8) != 0) {
-		cx_fru_usage();
-		return -1;
-	}
-
-	argc --;
-	argv ++;
-	if (argc < 1) {
-		cx_fru_usage();
-		return -1;
-	}
-
-	/* There is a file name in the parameters */
-	if (strlen(argv[0]) < 32) {
-		strcpy((char *)filename, argv[0]);
-		printf("File Name         : %s\n", filename);
-	} else {
-		lprintf(LOG_ERR, "File name must be smaller than 32 bytes\n");
-		cx_fru_usage();
-		return -1;
-	}
-
-	argc --;
-	argv ++;
-	if (argc < 2 || strncmp(argv[0], "tftp", 4) != 0) {
-		cx_fru_usage();
-		return -1;
-	}
-
-	if (strchr(argv[1], ':')) {
-		n_matched = sscanf(argv[1],
-		                   "%d.%d.%d.%d:%d",
-		                   &ip1, &ip2, &ip3, &ip4,
-			           &port)
-		if ( n_matched != 5) {
-			lprintf(LOG_ERR, "Invalid IP address: %s", argv[1]);
-				return -1;
-		}
-		printf("IP = %d.%d.%d.%d:%d\n", ip1, ip2, ip3, ip4, port);
-	} else {
-		n_matched = sscanf(argv[1],
-		                   "%d.%d.%d.%d",
-		                   &ip1, &ip2, &ip3, &ip4);
-		if (n_matched != 4) {
-			lprintf(LOG_ERR, "Invalid IP address: %s", argv[1]);
-			return -1;
-		}
-		printf("IP = %d.%d.%d.%d\n", ip1, ip2, ip3, ip4);
-	}
-	/* default to node fru for now */
-	cx_fru_download(intf,
-	                FRU_NODE_DEVICE_ID,
-	                filename,
-	                ip1, ip2, ip3, ip4, port);
-
-	return rv;
-}
-
-
 
 typedef enum {
 	Cx_Fabric_Arg_Invalid,
@@ -3665,8 +3520,6 @@ int ipmi_cxoem_main(struct ipmi_intf *intf, int argc, char **argv)
 		return 0;
 	} else if (!strncmp(argv[0], "fw", 2)) {
 		cx_fw_main(intf, argc - 1, &argv[1]);
-	} else if (!strncmp(argv[0], "fru", 3)) {
-		cx_fru_main(intf, argc - 1, &argv[1]);
 	} else if (!strncmp(argv[0], "fabric", 6)) {
 		cx_fabric_main(intf, argc - 1, &argv[1]);
 	} else if (!strncmp(argv[0], "data", 4)) {
