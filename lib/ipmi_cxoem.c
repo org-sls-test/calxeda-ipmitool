@@ -1324,13 +1324,14 @@ cx_fabric_cmd_t get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT},
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_CUSTOMER_MACADDR},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_ACTUAL, 0},
-	{0, 0, 0, 0, 0}
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0, 0}
 };
 
 cx_fabric_cmd_t set_cmd = {
@@ -1345,13 +1346,14 @@ cx_fabric_cmd_t set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_CUSTOMER_MACADDR,
 	 0,
 	 0},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE, 0},
-	{0, 0, 0, 0, 0}
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0, 0}
 };
 
 cx_fabric_cmd_t add_cmd = {
@@ -1589,6 +1591,15 @@ cx_fabric_param_t uplink_param = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_param_t cust_macaddr_param = {
+	"customer_macaddr",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_CUSTOMER_MACADDR,
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE, 0, 0, 0, 0}
+	,
+	Cx_Fabric_Arg_Value_MAC_Address, 6,
+	cx_fabric_mac_printer
+};
+
 cx_fabric_param_t macaddr_param = {
 	"macaddr",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR,
@@ -1802,6 +1813,7 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"ntp_server", Cx_Fabric_Arg_Parameter, (void *)&ntp_server_param},
 	{"ntp_port", Cx_Fabric_Arg_Parameter, (void *)&ntp_port_param},
 	{"defgw", Cx_Fabric_Arg_Parameter, (void *)&defgw_param},
+	{"customer_macaddr", Cx_Fabric_Arg_Parameter, (void *)&cust_macaddr_param},
 	{"macaddr", Cx_Fabric_Arg_Parameter, (void *)&macaddr_param},
 	{"nodeid", Cx_Fabric_Arg_Parameter, (void *)&nodeid_param},
 	{"linkspeed", Cx_Fabric_Arg_Parameter, (void *)&linkspeed_param},
@@ -2528,6 +2540,17 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 	req.msg.data_len = data_pos;
 
 	rsp = intf->sendrecv(intf, &req);
+//	lprintf(LOG_ERR, "req: netfn: 0x%x, lun: 0x%x, \n"
+//	        "cmd: 0x%x, target_cmd: 0x%x, data_len: 0x%x\n"
+//	        "data: \n"
+//	        "%02x %02x %02x %02x %02x %02x %02x %02x \n"
+//	        "%02x %02x %02x %02x %02x %02x %02x %02x \n",
+//	        req.msg.netfn, req.msg.lun, req.msg.cmd,
+//	        req.msg.target_cmd, req.msg.data_len,
+//	        req.msg.data[0], req.msg.data[1], req.msg.data[2], req.msg.data[3],
+//	        req.msg.data[4], req.msg.data[5], req.msg.data[6], req.msg.data[7],
+//	        req.msg.data[8], req.msg.data[9], req.msg.data[10], req.msg.data[11],
+//	        req.msg.data[12], req.msg.data[13], req.msg.data[14], req.msg.data[15]);
 	if (rsp == NULL) {
 		lprintf(LOG_ERR, "Error during fabric command\n");
 		return -1;
