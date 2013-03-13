@@ -1,21 +1,21 @@
 /*
  * Copyright (c) 2003 Sun Microsystems, Inc.  All Rights Reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * Redistribution of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * 
+ *
  * Redistribution in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in the
  * documentation and/or other materials provided with the distribution.
- * 
+ *
  * Neither the name of Sun Microsystems, Inc. or the names of
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
- * 
+ *
  * This software is provided "AS IS," without a warranty of any kind.
  * ALL EXPRESS OR IMPLIED CONDITIONS, REPRESENTATIONS AND WARRANTIES,
  * INCLUDING ANY IMPLIED WARRANTY OF MERCHANTABILITY, FITNESS FOR A
@@ -124,7 +124,7 @@ get_lan_param_select(struct ipmi_intf * intf, uint8_t chan, int param, int selec
 	int tmp = 0;
 
 	if (param >= 193)
-		tmp = 28 + (param - 193); 
+		tmp = 28 + (param - 193);
 	else tmp = param;
 	p = &ipmi_lan_params[tmp];
 	if (p == NULL)
@@ -1816,7 +1816,7 @@ ipmi_lan_set(struct ipmi_intf * intf, int argc, char ** argv)
 			ipmi_lan_set_usage();
 			return -1;
 		}
-	}		
+	}
 	else if (strncmp(argv[1], "ntp", 3) == 0) {
 		if (argc < 4 || (strncmp(argv[2], "help", 4) == 0)) {
 			lprintf(LOG_NOTICE, "LAN set ntp Commands: ipaddr, port");
@@ -1839,7 +1839,7 @@ ipmi_lan_set(struct ipmi_intf * intf, int argc, char ** argv)
 			ipmi_lan_set_usage();
 			return -1;
 		}
-	}		
+	}
 	else if (strncmp(argv[1], "oem_mac0", 8) == 0) {
 		if(argc != 3)
 		{
@@ -1849,7 +1849,7 @@ ipmi_lan_set(struct ipmi_intf * intf, int argc, char ** argv)
 		rc = get_cmdline_macaddr(argv[2], data);
 		if (rc == 0) {
 			printf("Setting LAN %s to %02x:%02x:%02x:%02x:%02x:%02x\n",
-		       		ipmi_lan_params[IPMI_LANP_OEM_MAC0].desc,
+		       		ipmi_lan_params[IPMI_LANP_OEM_MAC0 - 165].desc,
 		       		data[0], data[1], data[2], data[3], data[4], data[5]);
 			rc = set_lan_param(intf, chan, IPMI_LANP_OEM_MAC0, data, 6);
 		}
@@ -1863,7 +1863,7 @@ ipmi_lan_set(struct ipmi_intf * intf, int argc, char ** argv)
 		rc = get_cmdline_macaddr(argv[2], data);
 		if (rc == 0) {
 			printf("Setting LAN %s to %02x:%02x:%02x:%02x:%02x:%02x\n",
-		       		ipmi_lan_params[IPMI_LANP_OEM_MAC1].desc,
+		       		ipmi_lan_params[IPMI_LANP_OEM_MAC1 - 165].desc,
 		       		data[0], data[1], data[2], data[3], data[4], data[5]);
 			rc = set_lan_param(intf, chan, IPMI_LANP_OEM_MAC1, data, 6);
 		}
@@ -1877,7 +1877,7 @@ ipmi_lan_set(struct ipmi_intf * intf, int argc, char ** argv)
 		rc = get_cmdline_macaddr(argv[2], data);
 		if (rc == 0) {
 			printf("Setting LAN %s to %02x:%02x:%02x:%02x:%02x:%02x\n",
-		       		ipmi_lan_params[IPMI_LANP_OEM_MAC2].desc,
+		       		ipmi_lan_params[IPMI_LANP_OEM_MAC2 - 165].desc,
 		       		data[0], data[1], data[2], data[3], data[4], data[5]);
 			rc = set_lan_param(intf, chan, IPMI_LANP_OEM_MAC2, data, 6);
 		}
@@ -1891,7 +1891,7 @@ ipmi_lan_set(struct ipmi_intf * intf, int argc, char ** argv)
 		rc = get_cmdline_ouiaddr(argv[2], data);
 		if (rc == 0) {
 			printf("Setting LAN %s to %02x:%02x:%02x\n",
-		       		ipmi_lan_params[IPMI_LANP_OEM_OUID].desc,
+		       		ipmi_lan_params[IPMI_LANP_OEM_OUID - 165].desc,
 		       		data[0], data[1], data[2]);
 			rc = set_lan_param(intf, chan, IPMI_LANP_OEM_OUID, data, 3);
 		}
@@ -1905,7 +1905,7 @@ ipmi_lan_set(struct ipmi_intf * intf, int argc, char ** argv)
 		rc = get_cmdline_ouiaddr(argv[2], data);
 		if (rc == 0) {
 			printf("Setting LAN %s to %02x:%02x:%02x\n",
-		       		ipmi_lan_params[IPMI_LANP_SC_OUID].desc,
+		       		ipmi_lan_params[IPMI_LANP_SC_OUID - 165].desc,
 		       		data[0], data[1], data[2]);
 			rc = set_lan_param(intf, chan, IPMI_LANP_SC_OUID, data, 3);
 		}
@@ -1930,7 +1930,7 @@ ipmi_lan_set(struct ipmi_intf * intf, int argc, char ** argv)
 			return -1;
 		}
 			printf("Setting LAN %s to %02x\n",
-		       		ipmi_lan_params[IPMI_LANP_SC_OUID].desc,
+		       		ipmi_lan_params[IPMI_LANP_SC_MODE - 165].desc,
 		       		data[0]);
 		rc = set_lan_param(intf, chan, IPMI_LANP_SC_MODE, data, 1);
 	}
@@ -1942,7 +1942,7 @@ ipmi_lan_set(struct ipmi_intf * intf, int argc, char ** argv)
 		}
 		data[0] = (uint8_t)strtol(argv[2], NULL, 0);
 		printf("Setting LAN %s to %02x\n",
-		       	ipmi_lan_params[IPMI_LANP_SC_OUID].desc,
+		       	ipmi_lan_params[IPMI_LANP_SC_FID - 165].desc,
 		       	data[0]);
 		rc = set_lan_param(intf, chan, IPMI_LANP_SC_FID, data, 1);
 	}
