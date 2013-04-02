@@ -2061,6 +2061,7 @@ cx_fabric_cmd_t config_get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_NUM,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_INFO,
 	},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
@@ -2151,6 +2152,14 @@ cx_fabric_cmd_t factory_default_cmd = {
 cx_fabric_param_t ipinfo_config_param = {
 	"ipinfo",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_IPINFO,
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
+cx_fabric_param_t uplink_info_config_param = {
+	"uplink_info",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_INFO,
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 0, 0, 0, 0},
 	Cx_Fabric_Arg_Invalid, 0,
 	NULL
@@ -2263,6 +2272,7 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"update_config", Cx_Fabric_Arg_Command, (void *)&update_config_cmd},
 	{"factory_default", Cx_Fabric_Arg_Command, (void *)&factory_default_cmd},
 	{"ipinfo", Cx_Fabric_Arg_Parameter, (void *)&ipinfo_config_param},
+	{"uplink_info", Cx_Fabric_Arg_Parameter, (void *)&uplink_info_config_param},
 	{"ntp_server", Cx_Fabric_Arg_Parameter, (void *)&ntp_server_config_param},
 	{"ntp_port", Cx_Fabric_Arg_Parameter, (void *)&ntp_port_config_param},
 	{"nodenum_offset", Cx_Fabric_Arg_Parameter, (void *)&nodenum_offset_config_param},
