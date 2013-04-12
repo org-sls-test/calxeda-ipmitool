@@ -3802,15 +3802,15 @@ int ipmi_cxoem_main(struct ipmi_intf *intf, int argc, char **argv)
 		ipmi_cxoem_usage();
 		return 0;
 	} else if (!strncmp(argv[0], "fw", 2)) {
-		cx_fw_main(intf, argc - 1, &argv[1]);
+		rc = cx_fw_main(intf, argc - 1, &argv[1]);
 	} else if (!strncmp(argv[0], "fabric", 6)) {
-		cx_fabric_main(intf, argc - 1, &argv[1]);
+		rc = cx_fabric_main(intf, argc - 1, &argv[1]);
 	} else if (!strncmp(argv[0], "data", 4)) {
-		cx_data_main(intf, argc - 1, &argv[1]);
+		rc = cx_data_main(intf, argc - 1, &argv[1]);
 	} else if (!strncmp(argv[0], "info", 4)) {
-		cx_info_main(intf, argc - 1, &argv[1]);
+		rc = cx_info_main(intf, argc - 1, &argv[1]);
 	} else if (!strncmp(argv[0], "feature", 7)) {
-		cx_feature_main(intf, argc - 1, &argv[1]);
+		rc = cx_feature_main(intf, argc - 1, &argv[1]);
 	}
 
 	return rc;
