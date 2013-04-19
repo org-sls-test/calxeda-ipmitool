@@ -1466,6 +1466,20 @@ cx_fabric_cmd_t clear_watch_cmd = {
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_HOST, 0, 0, 0, 0}
 };
 
+cx_fabric_cmd_t trace_cmd = {
+	"trace",
+	IPMI_CMD_OEM_FABRIC_TRACE,
+	1, 0,
+	{IPMI_CMD_OEM_FABRIC_PARAMETER_START,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_STOP,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_STATUS,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_DUMP, 0},
+	{ IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_SIZE, 0},
+	{0, 0, 0, 0, 0}
+};
+
 #define MAC_ADDRESS_SIZE    6
 typedef uint8_t mac_address_t[MAC_ADDRESS_SIZE];
 
@@ -1873,6 +1887,39 @@ cx_fabric_param_t ipaddr_num_param = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_param_t start_param = {
+	"start",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_START,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t stop_param = {
+	"stop",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_STOP,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t status_param = {
+	"status",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_STATUS,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t dump_param = {
+	"dump",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_DUMP,
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP, 
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
 cx_fabric_spec_t node_spec = {
 	"node",
 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
@@ -1978,6 +2025,13 @@ cx_fabric_spec_t profile_spec = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_spec_t size_spec = {
+	"size",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_SIZE,
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
 cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"set_watch", Cx_Fabric_Arg_Command, (void *)&set_watch_cmd},
 	{"clear_watch", Cx_Fabric_Arg_Command, (void *)&clear_watch_cmd},
@@ -1988,6 +2042,7 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"info", Cx_Fabric_Arg_Command, (void *)&info_cmd},
 	{"update_config", Cx_Fabric_Arg_Command, (void *)&update_cmd},
 	{"factory_default", Cx_Fabric_Arg_Command, (void *)&factory_default_node_cmd},
+	{"trace", Cx_Fabric_Arg_Command, (void *)&trace_cmd},
 	{"ipaddr_base", Cx_Fabric_Arg_Parameter, (void *)&ipaddr_base_param},
 	{"ipaddr_num", Cx_Fabric_Arg_Parameter, (void *)&ipaddr_num_param},
 	{"ipaddr", Cx_Fabric_Arg_Parameter, (void *)&ipaddr_param},
@@ -2025,6 +2080,10 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"profileid", Cx_Fabric_Arg_Parameter, (void *)&profileid_param},
 	{"part_nodes", Cx_Fabric_Arg_Parameter, (void *)&partition_nodes_param},
 	{"part_range", Cx_Fabric_Arg_Parameter, (void *)&partition_range_param},
+	{"start", Cx_Fabric_Arg_Parameter, (void *)&start_param},
+	{"stop", Cx_Fabric_Arg_Parameter, (void *)&stop_param},
+	{"status", Cx_Fabric_Arg_Parameter, (void *)&status_param},
+	{"dump", Cx_Fabric_Arg_Parameter, (void *)&dump_param},
 	{"node", Cx_Fabric_Arg_Specifier, (void *)&node_spec},
 	{"interface", Cx_Fabric_Arg_Specifier, (void *)&interface_spec},
 	{"link", Cx_Fabric_Arg_Specifier, (void *)&link_spec},
@@ -2034,6 +2093,7 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"tftp", Cx_Fabric_Arg_Specifier, (void *)&tftp_spec},
 	{"host", Cx_Fabric_Arg_Specifier, (void *)&host_spec},
 	{"port", Cx_Fabric_Arg_Specifier, (void *)&port_spec},
+	{"size", Cx_Fabric_Arg_Specifier, (void *)&size_spec},
 	{"frequency", Cx_Fabric_Arg_Specifier, (void *)&frequency_spec},
 	{"averaging_frequency", Cx_Fabric_Arg_Specifier, (void *)&averaging_frequency_spec},
 	{"file", Cx_Fabric_Arg_Specifier, (void *)&file_spec},
