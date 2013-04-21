@@ -1915,7 +1915,6 @@ cx_fabric_param_t dump_param = {
 	"dump",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_DUMP,
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP, 
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT, 
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 0, 0, 0},
 	Cx_Fabric_Arg_Value_Scalar, 1,
 	cx_fabric_scalar_printer
