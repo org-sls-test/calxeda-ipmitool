@@ -1582,6 +1582,19 @@ void cx_fabric_scalar_printer(void *data, int len)
 	return;
 }
 
+void cx_fabric_hex_printer(void *data, int len)
+{
+	int i;
+	cx_fabric_value_t *val = (cx_fabric_value_t *) data;
+	int value = 0;
+
+	for (i = 0; i < len; i++) {
+		value |= (val->val.scalar[i] << (8 * i));
+	}
+	printf("0x%0x\n", (unsigned int)value);
+	return;
+}
+
 void cx_fabric_ipv4_printer(void *data, int len)
 {
 	cx_fabric_value_t *val = (cx_fabric_value_t *) data;
@@ -2125,6 +2138,7 @@ cx_fabric_cmd_t config_get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_INFO,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LACP_STATUS,
 	},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
@@ -2231,6 +2245,14 @@ cx_fabric_param_t uplink_info_config_param = {
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 0, 0, 0, 0},
 	Cx_Fabric_Arg_Invalid, 0,
 	NULL
+};
+
+cx_fabric_param_t lacp_status_config_param = {
+	"lacp_status",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_LACP_STATUS,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 4,
+	cx_fabric_hex_printer
 };
 
 cx_fabric_param_t ntp_server_config_param = {
@@ -2341,6 +2363,7 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"factory_default", Cx_Fabric_Arg_Command, (void *)&factory_default_cmd},
 	{"ipinfo", Cx_Fabric_Arg_Parameter, (void *)&ipinfo_config_param},
 	{"uplink_info", Cx_Fabric_Arg_Parameter, (void *)&uplink_info_config_param},
+	{"lacp_status", Cx_Fabric_Arg_Parameter, (void *)&lacp_status_config_param},
 	{"ntp_server", Cx_Fabric_Arg_Parameter, (void *)&ntp_server_config_param},
 	{"ntp_port", Cx_Fabric_Arg_Parameter, (void *)&ntp_port_config_param},
 	{"nodenum_offset", Cx_Fabric_Arg_Parameter, (void *)&nodenum_offset_config_param},
