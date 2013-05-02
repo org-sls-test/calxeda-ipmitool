@@ -196,8 +196,9 @@ static void cx_feature_usage(void)
 		"\n"
 		"Feature to Enable/Disable/Query are:\n"
 		"  selaging : SEL Aging or Circular SEL buffer\n"
-		"  hwwd : Hardware Watchdog\n"
-		"  tps: Thermal Protection System (Status Only)\n"
+		"  hwwd     : Hardware Watchdog\n"
+		"  tps      : Thermal Protection System (Status Only)\n"
+		"  mansen   : Override for manual sensors monitoring\n"
 		"\n"
 		"Ex: ipmitool cxoem feature status selaging\n"
 		"Ex: ipmitool cxoem feature enable hwwd\n" "\n");
@@ -3827,6 +3828,7 @@ static int cx_feature_main(struct ipmi_intf *intf, int argc, char **argv)
 		{0x01, "selaging"},
 		{0x02, "hwwd"},
 		{0x03, "tps"},
+		{0x04, "mansen"},
 		{0x00, "Invalid"},	// make sure this is the last entry
 	};
 	int rv = 0;
