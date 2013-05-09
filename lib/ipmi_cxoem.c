@@ -3695,7 +3695,11 @@ static int cx_info_main(struct ipmi_intf *intf, int argc, char **argv)
 					rv = -1;
 				} else {
 					switch (card_rs->card_id) {
+					/* Case 0 isn't really energycard, but
+					   old versions will return that, so
+					   we'll just go with it. */
 					case 0:
+					case 1:
 						strcpy(board_type, "EnergyCard");
 						break;
 					case 7:
