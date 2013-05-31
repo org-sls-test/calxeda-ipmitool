@@ -1369,7 +1369,8 @@ cx_fabric_cmd_t get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_CUSTOMER_MACADDR,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_SPEED},
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_SPEED,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_INFO},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
@@ -1519,7 +1520,7 @@ typedef uint8_t mac_address_t[MAC_ADDRESS_SIZE];
 #define IPV4_ADDRESS_SIZE   4
 typedef uint8_t ipv4_address_t[IPV4_ADDRESS_SIZE];
 
-#define MAX_VAL_STRING 20
+#define MAX_VAL_STRING 32
 #define MAX_VAL_BITMAP 25
 typedef union {
 	uint8_t scalar[4];
@@ -1749,6 +1750,14 @@ cx_fabric_param_t uplink_speed_param = {
 	{0, 0, 0, 0, 0},
 	Cx_Fabric_Arg_Value_Scalar, 1,
 	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t uplink_info_param = {
+	"uplink_info",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_INFO,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_String, MAX_VAL_STRING,
+	cx_fabric_string_printer
 };
 
 cx_fabric_param_t uplink_param = {
@@ -2114,6 +2123,7 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"lu_factor", Cx_Fabric_Arg_Parameter,
 	 (void *)&link_users_factor_param},
 	{"uplink_speed", Cx_Fabric_Arg_Parameter, (void *)&uplink_speed_param},
+	{"uplink_info", Cx_Fabric_Arg_Parameter, (void *)&uplink_info_param},
 	{"linkmap", Cx_Fabric_Arg_Parameter, (void *)&linkmap_param},
 	{"depth_chart", Cx_Fabric_Arg_Parameter, (void *)&depth_chart_param},
 	{"routing_table", Cx_Fabric_Arg_Parameter, (void *)&routing_table_param},
