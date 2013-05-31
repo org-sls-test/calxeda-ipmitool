@@ -139,8 +139,9 @@ static void cx_fw_usage(void)
 		"  info\n"
 		"  get            <filename> <offset> <size> tftp <ip[:port]>\n"
 		"  put            <filename> <offset> <size> tftp <ip[:port]>\n"
-		"  reset          Reset to factory default\n"
+		"  reset          Reset firmware to factory default\n"
 		"  version        <version_str> - set the firmware version\n"
+		"  fru_reset      Reset FRU to factory default\n"
 		"\n");
 }
 
@@ -790,6 +791,32 @@ int cx_fw_version(struct ipmi_intf *intf, char *version)
 }
 
 
+int cx_fw_fru_reset(struct ipmi_intf *intf)
+{
+	struct ipmi_rs *rsp;
+	struct ipmi_rq req;
+
+	memset(&req, 0, sizeof(req));
+	req.msg.netfn = IPMI_NETFN_OEM_SS;
+	req.msg.cmd = IPMI_CMD_OEM_FRU_RESET;
+
+	rsp = intf->sendrecv(intf, &req);
+	if (rsp == NULL) {
+		lprintf(LOG_ERR,
+			"Error resetting FRU to factory default\n");
+		return -1;
+	}
+
+	if (rsp->ccode > 0) {
+		lprintf(LOG_ERR, "FRU reset failed: %s",
+			val2str(rsp->ccode, completion_code_vals));
+		return -1;
+	}
+
+	return 0;
+}
+
+
 int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 {
 	char filename[65];
@@ -1250,6 +1277,9 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 		rv = 0;
 	} else if (strncmp(argv[0], "version", 7) == 0) {
 		cx_fw_version(intf, argv[1]);
+		rv = 0;
+	} else if (strncmp(argv[0], "fru_reset", 9) == 0) {
+		cx_fw_fru_reset(intf);
 		rv = 0;
 	} else {
 		cx_fw_usage();
@@ -1938,7 +1968,7 @@ cx_fabric_param_t status_param = {
 cx_fabric_param_t dump_param = {
 	"dump",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_DUMP,
-	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP, 
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 0, 0, 0},
 	Cx_Fabric_Arg_Value_Scalar, 1,
 	cx_fabric_scalar_printer
