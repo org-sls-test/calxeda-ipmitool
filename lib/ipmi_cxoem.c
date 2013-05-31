@@ -1472,7 +1472,8 @@ cx_fabric_cmd_t info_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MAC_STATS,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MAC_CHANNEL_STATS,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_STATS,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS},
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITION_CONFIG},
 	{ IPMI_CMD_OEM_FABRIC_SPECIFIER_MAC,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
@@ -1835,6 +1836,14 @@ cx_fabric_param_t link_users_param = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_param_t partition_config_param = {
+	"partition_config",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITION_CONFIG,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Scalar, 1,
+	cx_fabric_scalar_printer
+};
+
 cx_fabric_param_t global_watch_param = {
 	"global_watch",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_GLOBAL_WATCH,
@@ -2143,6 +2152,7 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"depth_chart", Cx_Fabric_Arg_Parameter, (void *)&depth_chart_param},
 	{"routing_table", Cx_Fabric_Arg_Parameter, (void *)&routing_table_param},
 	{"link_users", Cx_Fabric_Arg_Parameter, (void *)&link_users_param},
+	{"partition_config", Cx_Fabric_Arg_Parameter, (void *)&partition_config_param},
 	{"global_watch", Cx_Fabric_Arg_Parameter, (void *)&global_watch_param},
 	{"link_stats", Cx_Fabric_Arg_Parameter, (void *)&link_stats_param},
 	{"link_watch", Cx_Fabric_Arg_Parameter, (void *)&link_watch_param},
