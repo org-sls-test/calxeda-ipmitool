@@ -2737,12 +2737,16 @@ ipmi_fru_read_to_bin(struct ipmi_intf * intf,
 	req.msg.data_len = 1;
 
 	rsp = intf->sendrecv(intf, &req);
-	if (!rsp)
+	if (!rsp) {
+		printf ("  No response to FRU read.\n");
 		return;
+	}
 
 	if (rsp->ccode > 0) {
 		if (rsp->ccode == 0xc3)
 			printf ("  Timeout accessing FRU info. (Device not present?)\n");
+		else
+			printf ("	CCODE = 0x%02x\n", rsp->ccode);
 		return;
 	}
 	fru.size = (rsp->data[1] << 8) | rsp->data[0];
