@@ -1,20 +1,20 @@
 # Copyright (c) 2003 Sun Microsystems, Inc.  All Rights Reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
 # are met:
-# 
+#
 # Redistribution of source code must retain the above copyright
 # notice, this list of conditions and the following disclaimer.
-# 
+#
 # Redistribution in binary form must reproduce the above copyright
 # notice, this list of conditions and the following disclaimer in the
 # documentation and/or other materials provided with the distribution.
-# 
+#
 # Neither the name of Sun Microsystems, Inc. or the names of
 # contributors may be used to endorse or promote products derived
 # from this software without specific prior written permission.
-# 
+#
 # This software is provided "AS IS," without a warranty of any kind.
 # ALL EXPRESS OR IMPLIED CONDITIONS, REPRESENTATIONS AND WARRANTIES,
 # INCLUDING ANY IMPLIED WARRANTY OF MERCHANTABILITY, FITNESS FOR A
@@ -39,9 +39,9 @@ libipmitool_la_SOURCES	= helper.c ipmi_sdr.c ipmi_sel.c ipmi_sol.c ipmi_pef.c \
 				  ipmi_oem.c ipmi_isol.c ipmi_sunoem.c ipmi_fwum.c ipmi_picmg.c    \
 				  ipmi_main.c ipmi_tsol.c ipmi_firewall.c ipmi_kontronoem.c        \
 				  ipmi_hpmfwupg.c ipmi_sdradd.c ipmi_ekanalyzer.c ipmi_gendev.c    \
-				  ipmi_cxoem.c
+				  ipmi_cxoem.c intel_hex.c
 
 libipmitool_la_LDFLAGS		= -export-dynamic
 libipmitool_la_LIBADD		= -lm
-libipmitool_la_DEPENDENCIES	= 
+libipmitool_la_DEPENDENCIES	=
 
