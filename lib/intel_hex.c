@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "intel_hex.h"
+#include <ipmitool/intel_hex.h>
 
 
 static int

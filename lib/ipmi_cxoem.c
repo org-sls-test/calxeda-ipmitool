@@ -43,7 +43,7 @@
 #include <ipmitool/ipmi_cxoem.h>
 #include <ipmitool/ipmi_raw.h>
 
-#include "intel_hex.h"
+#include <ipmitool/intel_hex.h>
 
 
 /*
