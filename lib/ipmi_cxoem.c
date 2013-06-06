@@ -43,21 +43,31 @@
 #include <ipmitool/ipmi_cxoem.h>
 #include <ipmitool/ipmi_raw.h>
 
-/* cxoem data targets -- i.e. the kinds of data we can read and write
+#include "intel_hex.h"
+
+
+/*
+ * cxoem data targets -- i.e. the kinds of data we can read and write
  */
 #define CX_DATA_TARGET_MEM 1
 #define CX_DATA_TARGET_CDB 2
 #define CX_DATA_TARGET_UNKNOWN 0
-/* Maximum amount of data that can be read from or written to the configuration
-   data base
-*/
+
+/*
+ * Maximum amount of data that can be read from or written to the configuration
+ * data base
+ */
 #define MAX_RETURNABLE_CDB_LEN 64
-/* Kinds of access to cxoem data supported
+
+/*
+ * Kinds of access to cxoem data supported
  */
 #define CX_DATA_ACCESS_READ 1
 #define CX_DATA_ACCESS_WRITE 2
 #define CX_DATA_ACCESS_UNKNOWN 0
-/* Supported cxoem data formatting hints
+
+/*
+ * Supported cxoem data formatting hints
  */
 #define CX_DATA_FMT_DEFAULT 0
 #define CX_DATA_FMT_INT 1
@@ -67,7 +77,9 @@
 #define CX_DATA_FMT_XSTR 5
 #define CX_DATA_INT_TYPE 1
 #define CX_DATA_BYTE_TYPE 2
-/* cxoem internal return codes
+
+/*
+ * cxoem internal return codes
  */
 #define CX_DATA_BAD_VALUE -1
 #define CX_DATA_BAD_LENGTH -2
@@ -114,7 +126,9 @@ static void ipmi_cxoem_usage(void)
 	lprintf(LOG_NOTICE,
 		"Usage: ipmitool cxoem <command> [option...]\n"
 		"\n"
-		"Commands: \n" "\n" "  fw fabric mac log data info feature\n");
+		"Commands: \n"
+		"\n"
+		"  fw fabric mac log data info feature pmic\n");
 }
 
 static void cx_fw_usage(void)
@@ -205,6 +219,7 @@ static void cx_feature_usage(void)
 		"Ex: ipmitool cxoem feature status selaging\n"
 		"Ex: ipmitool cxoem feature enable hwwd\n" "\n");
 }
+
 
 int cx_fw_download(struct ipmi_intf *intf, char *filename, int partition,
 		   int type, int ip1, int ip2, int ip3, int ip4, int port)
@@ -3871,6 +3886,30 @@ static const char *tps_to_string(unsigned char state)
 	return "";
 }
 
+
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
+
+int better_str2val(char *str,
+		   const struct valstr *vals,
+		   int n_vals,
+		   int honor_case)
+{
+	int i;
+	int cmp;
+
+	for (i = 0; i < n_vals; ++i) {
+		if (honor_case) {
+			cmp = strcmp(str, vals[i].str);
+		} else {
+			cmp = strcasecmp(str, vals[i].str);
+		}
+		if (cmp == 0) {
+			return vals[i].val;
+		}
+	}
+	return -1;
+}
+
 static int cx_feature_main(struct ipmi_intf *intf, int argc, char **argv)
 {
 	uint8_t rs_data[MAX_MSG_DATA_SIZE];
@@ -3884,7 +3923,6 @@ static int cx_feature_main(struct ipmi_intf *intf, int argc, char **argv)
 		{0x02, "hwwd"},
 		{0x03, "tps"},
 		{0x04, "mansen"},
-		{0x00, "Invalid"},	// make sure this is the last entry
 	};
 	int rv = 0;
 	int i;
@@ -3913,21 +3951,17 @@ static int cx_feature_main(struct ipmi_intf *intf, int argc, char **argv)
 	}
 
 	if (0 == rv) {
-		i = 0;
-		rv = -1;	// Assuming the feature specified cannot be found
-		while (oem_features[i].val) {
-			if (strncmp
-			    (argv[1], oem_features[i].str,
-			     strlen(oem_features[i].str)) == 0) {
-				rq_data[1] = oem_features[i].val;
-				rv = 0;
-				feature_index = i;
-				break;
-			}
-			i++;
+		i = better_str2val(argv[1],
+				   oem_features,
+				   ARRAY_SIZE(oem_features),
+				   1);
+		if (i < 0) {
+			rv = -1;
+		} else {
+			feature_index = i;
+			rq_data[1] = oem_features[i].val;
 		}
 	}
-
 
 	if (0 == rv) {
 
@@ -3956,6 +3990,322 @@ static int cx_feature_main(struct ipmi_intf *intf, int argc, char **argv)
 	return rv;
 }
 
+
+
+
+#define CXOEM_PMIC_PARAM_UNKNOWN	0
+#define CXOEM_PMIC_PARAM_VERSION	1
+#define CXOEM_PMIC_PARAM_STATUS		2
+#define CXOEM_PMIC_PARAM_TYPE		3
+#define CXOEM_PMIC_N_PARAMS		4
+
+const struct valstr cx_pmic_params[] = {
+	{CXOEM_PMIC_PARAM_VERSION,"version"},
+	{CXOEM_PMIC_PARAM_STATUS, "status"},
+	{CXOEM_PMIC_PARAM_TYPE, "type"},
+};
+
+
+#define CXOEM_PMIC_TYPE_UNKNOWN		0
+#define CXOEM_PMIC_TYPE_EXAR7724	1
+
+const struct valstr cx_pmic_types[] = {
+	{0x00, "Unknown"},
+	{0x01, "Exar 7724"},
+};
+
+
+#define PMIC_STATUS_READY		0
+#define PMIC_STATUS_INVALID		1
+#define PMIC_STATUS_IN_PROGRESS		2
+#define PMIC_STATUS_FAILED		3
+#define PMIC_STATUS_SUCCESSFUL		4
+
+const struct valstr cx_pmic_status[] = {
+	{PMIC_STATUS_READY, "Ready"},
+	{PMIC_STATUS_INVALID, "Invalid"},
+	{PMIC_STATUS_IN_PROGRESS, "In progress"},
+	{PMIC_STATUS_FAILED, "Failed"},
+	{PMIC_STATUS_SUCCESSFUL, "Successful"},
+};
+
+
+static int cx_pmic_get_param(struct ipmi_intf *intf,
+			     int cx_pmic_param, uint16_t handle)
+{
+	struct ipmi_rs *rsp;
+	struct ipmi_rq req;
+	uint8_t msg_data[16];
+	int pmic_type;
+	int i;
+
+	if (cx_pmic_param <= CXOEM_PMIC_PARAM_UNKNOWN
+	    || cx_pmic_param > CXOEM_PMIC_N_PARAMS) {
+		lprintf(LOG_ERR,
+			"Unknown PMIC parameter %d", cx_pmic_param);
+		return -1;
+	}
+
+	memset(&req, 0, sizeof(req));
+	req.msg.netfn = IPMI_NETFN_OEM_SS;
+	req.msg.cmd = IPMI_CMD_OEM_PMIC_GET_PARAM;
+	req.msg.data = msg_data;
+
+	msg_data[0] = cx_pmic_param;
+	req.msg.data_len = 1;
+
+	if (cx_pmic_param == CXOEM_PMIC_PARAM_STATUS) {
+		msg_data[1] = handle & 0xff;
+		msg_data[2] = (handle >> 8) & 0xff;
+		req.msg.data_len += 2;
+	}
+
+	rsp = intf->sendrecv(intf, &req);
+	if (rsp == NULL) {
+		lprintf(LOG_ERR,
+			"Error getting PMIC parameter %s",
+			val2str(cx_pmic_param, cx_pmic_params));
+		return -1;
+	}
+	if (rsp->ccode > 0) {
+		lprintf(LOG_ERR,
+			"PMIC get %s failed: %s",
+			val2str(cx_pmic_param, cx_pmic_params),
+			val2str(rsp->ccode, completion_code_vals));
+		return -1;
+	}
+
+	if (rsp->data[0] != cx_pmic_param) {
+		lprintf(LOG_ERR, "Mismatched PMIC status response");
+		lprintf(LOG_ERR, "received %d, but wanted %d\n",
+			rsp->data[0], cx_pmic_param);
+		return -1;
+	}
+
+	/*
+	 * This is specific to the Exar 7724, perhaps.
+	 * Maybe someday some other part will be supported.
+	 */
+	pmic_type = rsp->data[1];
+	if (pmic_type != CXOEM_PMIC_TYPE_EXAR7724) {
+		lprintf(LOG_ERR,
+			"Can't interpret response for PMIC type %s",
+			val2str(pmic_type, cx_pmic_types));
+		return -1;
+	}
+
+	switch (cx_pmic_param) {
+	case CXOEM_PMIC_PARAM_VERSION:
+		printf("PMIC FW Version : %d\n", rsp->data[2]);
+		break;
+
+	case CXOEM_PMIC_PARAM_STATUS:
+		printf("PMIC FW Status : %s\n",
+		       val2str(rsp->data[2], cx_pmic_status));
+		break;
+
+	case CXOEM_PMIC_PARAM_TYPE:
+		printf("PMIC Type : %s\n",
+		       val2str(rsp->data[1], cx_pmic_types));
+		break;
+	}
+
+	return CXOEM_SUCCESS;
+}
+
+
+#define CXOEM_FW_MAX_RECV_SIZE		128
+
+struct cx_oem_pmic_fw_write_rq {
+	uint8_t image_type;
+	uint16_t offset;
+	unsigned char data[CXOEM_FW_MAX_RECV_SIZE];
+} __attribute__ ((packed));
+
+
+#define MIN(a, b)	((a) < (b) ? (a) : (b))
+
+
+static int cx_pmic_fw_write(struct ipmi_intf *intf, uint8_t *image, int len)
+{
+	struct ipmi_rs *rsp;
+	struct ipmi_rq req;
+	int pmic_type;
+	struct cx_oem_pmic_fw_write_rq rq_data;
+	int offset, size;
+
+	memset(&req, 0, sizeof(req));
+	memset(&rq_data, 0, sizeof(rq_data));
+
+	req.msg.netfn = IPMI_NETFN_OEM_SS;
+	req.msg.cmd = IPMI_CMD_OEM_PMIC_FW_WRITE;
+	req.msg.data = (void *)&rq_data;
+
+	rq_data.image_type = CXOEM_PMIC_TYPE_EXAR7724;	/* 'cuz. */
+	rq_data.offset = 0;
+
+	for (offset = 0; offset < len; offset += CXOEM_FW_MAX_RECV_SIZE) {
+		/*
+		 * Send image at offset for size bytes.
+		 */
+		size = MIN(len - offset, CXOEM_FW_MAX_RECV_SIZE);
+		memcpy(rq_data.data, &image[offset], size);
+		req.msg.data_len = sizeof(rq_data)
+			- sizeof(rq_data.data) + size;
+		rsp = intf->sendrecv(intf, &req);
+		if (rsp == NULL) {
+			lprintf(LOG_ERR, "Error: PMIC FW write failed");
+			return -1;
+		}
+		if (rsp->ccode > 0) {
+			lprintf(LOG_ERR, "Error: PMIC FW write failed (%s)",
+				val2str(rsp->ccode, completion_code_vals));
+			return -1;
+		}
+
+		/*
+		 * Talk about the transaction id as it goes by...
+		 */
+		if (rsp->ccode == 0 && offset == 0) {
+			uint16_t handle;
+			handle = (unsigned int)rsp->data[0];
+			handle |= (unsigned int)(rsp->data[1] << 8);
+			printf("PMIC FW Write Handle ID: %d\n", handle);
+		}
+
+		rq_data.offset += size;
+	}
+
+	/*
+	 * If the last block sent was short, that will terminate
+	 * the receive.  Otherwise an additional (but empty) block
+	 * needs to be sent to ensure the termination.
+	 */
+	if (offset - len == 0) {
+		req.msg.data_len = sizeof(rq_data);
+		rsp = intf->sendrecv(intf, &req);
+		if (rsp == NULL) {
+			lprintf(LOG_ERR, "Error: PMIC FW write failed");
+			return -1;
+		}
+		if (rsp->ccode > 0) {
+			lprintf(LOG_ERR, "Error: PMIC FW write failed (%s)",
+				val2str(rsp->ccode, completion_code_vals));
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+
+static void cx_pmic_usage(void)
+{
+	lprintf(LOG_NOTICE,
+		"\n"
+		"Usage: ipmitool cxoem pmic <command> [option...]\n"
+		"\n"
+		"PMIC Commands: \n"
+		"\n"
+		"  get [type|version|status <handle>]\n"
+		"  fwwrite <fw_file_ihex>\n"
+		"where:\n"
+		"    <handle> is a FW write transaction handle\n"
+		"    <fw_file_hex> is a hex format FW image filename\n"
+		"\n");
+}
+
+
+#define PMIC_EXAR_7724_IMAGE_SIZE	7 * 64
+
+static int cx_pmic_main(struct ipmi_intf *intf, int argc, char **argv)
+{
+	int rv = -1;		// Assuming error
+	uint8_t rs_data[MAX_MSG_DATA_SIZE];
+	int rs_data_size = MAX_MSG_DATA_SIZE;
+	uint8_t completion_code;
+
+	if (argc < 1 || strncmp(argv[0], "help", 4) == 0) {
+		cx_pmic_usage();
+		return 0;
+	}
+
+	if (strncmp(argv[0], "get", 3) == 0
+	    && (argc == 2 || argc == 3)) {
+		int param;
+		int ret;
+		int handle = 0;
+
+		param = better_str2val(argv[1],
+				       cx_pmic_params,
+				       ARRAY_SIZE(cx_pmic_params),
+				       0);
+		if (param < 0) {
+			cx_pmic_usage();
+			return -1;
+		}
+		if (param == CXOEM_PMIC_PARAM_STATUS && argc == 3) {
+			handle = strtol(argv[2], 0, 0);
+			handle &= 0xFFFF;
+		} else if (argc == 3) {
+			cx_pmic_usage();
+			return -1;
+		}
+
+		ret = cx_pmic_get_param(intf, param, handle);
+		return ret;
+	}
+
+	if (strncmp(argv[0], "fwwrite", 7) == 0 && argc == 2) {
+		char *filename;
+		uint8_t image[65536];
+		int addr_min, addr_max;
+		int ret;
+
+		filename = argv[1];
+
+		if (strlen(filename) == 0) {
+			lprintf(LOG_ERR,
+				"Need the filename of a hex image.\n");
+			return -1;
+		}
+
+		addr_min = 65536;
+		addr_max = 0;
+		memset(image, 0, 65536);
+
+		ret = ihex_read_file(filename, image, &addr_min, &addr_max);
+
+		if (ret < 0) {
+			if (ret == -2) {
+				lprintf(LOG_ERR,
+					"File '%s' fails internal CRC check\n",
+					filename);
+			}
+			return -1;
+		}
+
+		/*
+		 * Check for Exar 77724 image sizes.
+		 * Anything else is destined for trouble still...
+		 */
+		if (addr_min != 0
+		    || addr_max != PMIC_EXAR_7724_IMAGE_SIZE - 1) {
+			lprintf(LOG_ERR,
+				"Wrong sizes for an Exar 7724 image.\n");
+			return -1;
+		}
+
+		ret = cx_pmic_fw_write(intf, image, PMIC_EXAR_7724_IMAGE_SIZE);
+
+		return ret;
+	}
+
+	cx_pmic_usage();
+	return -1;
+}
+
+
 int ipmi_cxoem_main(struct ipmi_intf *intf, int argc, char **argv)
 {
 	int rc = 0;
@@ -3973,6 +4323,8 @@ int ipmi_cxoem_main(struct ipmi_intf *intf, int argc, char **argv)
 		rc = cx_info_main(intf, argc - 1, &argv[1]);
 	} else if (!strncmp(argv[0], "feature", 7)) {
 		rc = cx_feature_main(intf, argc - 1, &argv[1]);
+	} else if (!strncmp(argv[0], "pmic", 4)) {
+		rc = cx_pmic_main(intf, argc - 1, &argv[1]);
 	}
 
 	return rc;
