@@ -765,8 +765,8 @@ ipmi_lan_print(struct ipmi_intf * intf, uint8_t chan)
 	if (p == NULL)
 		return -1;
 	if (p->data != NULL) {
-		int *port;
-		port = (int *)&p->data[0];
+		uint16_t *port;
+		port = (uint16_t *)&p->data[0];
 		printf("%-24s: %d\n", p->desc, *port);
 	}
 
