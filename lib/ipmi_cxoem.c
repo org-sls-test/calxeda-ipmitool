@@ -910,8 +910,8 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 				cx_fw_usage();
 				return -1;
 			}
-			cx_fw_download(intf, filename, partition, type,
-				       ip1, ip2, ip3, ip4, port);
+			rv = cx_fw_download(intf, filename, partition, type,
+					    ip1, ip2, ip3, ip4, port);
 		} else {
 			cx_fw_usage();
 			return -1;
@@ -979,8 +979,8 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 				cx_fw_usage();
 				return -1;
 			}
-			cx_fw_upload(intf, filename, partition, type,
-				     ip1, ip2, ip3, ip4, port);
+			rv = cx_fw_upload(intf, filename, partition, type,
+					  ip1, ip2, ip3, ip4, port);
 		} else {
 			cx_fw_usage();
 			return -1;
@@ -1020,11 +1020,11 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 			}
 
 			if (strncmp(argv[1], "read", 4) == 0) {
-				cx_fw_register_read(intf, filename, partition,
-						    type);
+				rv = cx_fw_register_read(intf, filename,
+							 partition, type);
 			} else if(strncmp(argv[1], "write", 5) == 0) {
-				cx_fw_register_write(intf, filename, partition,
-						     type);
+				rv = cx_fw_register_write(intf, filename,
+							  partition, type);
 			} else {
 				cx_fw_usage();
 				return -1;
@@ -1093,8 +1093,8 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 				cx_fw_usage();
 				return -1;
 			}
-			cx_fw_raw(intf, filename, addr, size, dir,
-				  ip1, ip2, ip3, ip4, port);
+			rv = cx_fw_raw(intf, filename, addr, size, dir,
+				       ip1, ip2, ip3, ip4, port);
 		} else {
 			cx_fw_usage();
 			return -1;
@@ -1159,8 +1159,8 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 				cx_fw_usage();
 				return -1;
 			}
-			cx_fw_raw(intf, filename, addr, size, dir,
-				  ip1, ip2, ip3, ip4, port);
+			rv = cx_fw_raw(intf, filename, addr, size, dir,
+				       ip1, ip2, ip3, ip4, port);
 		} else {
 			cx_fw_usage();
 			return -1;
@@ -1178,8 +1178,7 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 				return -1;
 			}
 		}
-		cx_fw_status(intf, handle);
-		rv = 0;
+		rv = cx_fw_status(intf, handle);
 	} else if (strncmp(argv[0], "info", 4) == 0) {
 		int partition = -1;
 
@@ -1193,7 +1192,7 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 				return -1;
 			}
 		}
-		cx_fw_info(intf, partition);
+		rv = cx_fw_info(intf, partition);
 	} else if (strncmp(argv[0], "makenext", 8) == 0) {
 		if (argc == 2) {
 			partition = strtol(argv[1], (char **)NULL, 10);
@@ -1208,7 +1207,7 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 			cx_fw_usage();
 			return -1;
 		}
-		cx_fw_makenext(intf, partition);
+		rv = cx_fw_makenext(intf, partition);
 	} else if (strncmp(argv[0], "activate", 8) == 0) {
 		int partition = -1;
 
@@ -1225,7 +1224,7 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 			cx_fw_usage();
 			return -1;
 		}
-		cx_fw_activate(intf, partition);
+		rv = cx_fw_activate(intf, partition);
 	} else if (strncmp(argv[0], "invalidate", 10) == 0) {
 		int partition = -1;
 
@@ -1242,7 +1241,7 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 			cx_fw_usage();
 			return -1;
 		}
-		cx_fw_invalidate(intf, partition);
+		rv = cx_fw_invalidate(intf, partition);
 	} else if (strncmp(argv[0], "flags", 5) == 0) {
 		int partition = -1;
 		uint32_t flags = 0xffffffff;
@@ -1268,7 +1267,7 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 			cx_fw_usage();
 			return -1;
 		}
-		cx_fw_flags(intf, partition, flags);
+		rv = cx_fw_flags(intf, partition, flags);
 	} else if (strncmp(argv[0], "check", 5) == 0) {
 		int partition = -1;
 
@@ -1285,17 +1284,13 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 			cx_fw_usage();
 			return -1;
 		}
-		cx_fw_check(intf, partition);
-		rv = 0;
+		rv = cx_fw_check(intf, partition);
 	} else if (strncmp(argv[0], "reset", 5) == 0) {
-		cx_fw_reset(intf);
-		rv = 0;
+		rv = cx_fw_reset(intf);
 	} else if (strncmp(argv[0], "version", 7) == 0) {
-		cx_fw_version(intf, argv[1]);
-		rv = 0;
+		rv = cx_fw_version(intf, argv[1]);
 	} else if (strncmp(argv[0], "fru_reset", 9) == 0) {
-		cx_fw_fru_reset(intf);
-		rv = 0;
+		rv = cx_fw_fru_reset(intf);
 	} else {
 		cx_fw_usage();
 		return -1;
