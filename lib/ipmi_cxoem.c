@@ -2216,6 +2216,8 @@ cx_fabric_cmd_t config_get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_INFO,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LACP_STATUS,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR_BASE,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR_MASK,
 	},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
@@ -2264,6 +2266,8 @@ cx_fabric_cmd_t config_set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_DEFGW,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR_BASE,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR_MASK,
 	},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
@@ -2412,6 +2416,24 @@ cx_fabric_param_t linkspeed_policy_config_param = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_param_t macaddr_base_param = {
+	"macaddr_base",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR_BASE,
+	{0, 0, 0, 0, 0}
+	,
+	Cx_Fabric_Arg_Value_MAC_Address, 6,
+	cx_fabric_mac_printer
+};
+
+cx_fabric_param_t macaddr_mask_param = {
+	"macaddr_mask",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR_MASK,
+	{0, 0, 0, 0, 0}
+	,
+	Cx_Fabric_Arg_Value_MAC_Address, 6,
+	cx_fabric_mac_printer
+};
+
 cx_fabric_spec_t tftp_config_spec = {
 	"tftp",
 	IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
@@ -2461,6 +2483,8 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"ipaddr_num", Cx_Fabric_Arg_Parameter, (void *)&ipaddr_num_param},
 	{"netmask", Cx_Fabric_Arg_Parameter, (void *)&netmask_param},
 	{"defgw", Cx_Fabric_Arg_Parameter, (void *)&defgw_param},
+	{"macaddr_base", Cx_Fabric_Arg_Parameter, (void *)&macaddr_base_param},
+	{"macaddr_mask", Cx_Fabric_Arg_Parameter, (void *)&macaddr_mask_param},
 	{"tftp", Cx_Fabric_Arg_Specifier, (void *)&tftp_config_spec},
 	{"port", Cx_Fabric_Arg_Specifier, (void *)&port_config_spec},
 	{"file", Cx_Fabric_Arg_Specifier, (void *)&file_config_spec},
