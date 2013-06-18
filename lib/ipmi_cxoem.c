@@ -1761,7 +1761,7 @@ cx_fabric_param_t link_users_factor_param = {
 };
 
 cx_fabric_param_t uplink_speed_param = {
-	"lu_factor",
+	"uplink_speed",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_SPEED,
 	{0, 0, 0, 0, 0},
 	Cx_Fabric_Arg_Value_Scalar, 1,
