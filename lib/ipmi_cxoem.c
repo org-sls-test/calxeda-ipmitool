@@ -112,6 +112,13 @@ const struct valstr cx_tftp_status[] = {
 	{0x04, "Canceled"},
 };
 
+const struct valstr cx_fw_check_errors[] = {
+	{0xFD, "CRC32 does not match"},
+	{0xFC, "Missing SIMG magic string"},
+	{0xF9, "Failed to read image"},
+	{0xF6, "Image is invalid or not active"},
+};
+
 const char *tps_table[] = {
 	"(Init)",
 	"(Cold)",
@@ -507,19 +514,20 @@ int cx_fw_check(struct ipmi_intf *intf, int partition)
 	}
 
 	if (rsp->ccode == 0) {
-		unsigned int crc32;
-		crc32 = (unsigned int)rsp->data[5];
-		crc32 |= (unsigned int)(rsp->data[4] << 8);
-		crc32 |= (unsigned int)(rsp->data[3] << 16);
-		crc32 |= (unsigned int)(rsp->data[2] << 24);
 		if (rsp->data[1] == 0) {
-			printf("CRC32 :  %08x\n", crc32);
+			unsigned int crc32;
+			crc32 = (unsigned int)rsp->data[5];
+			crc32 |= (unsigned int)(rsp->data[4] << 8);
+			crc32 |= (unsigned int)(rsp->data[3] << 16);
+			crc32 |= (unsigned int)(rsp->data[2] << 24);
+			printf("CRC32             : %08x\n", crc32);
 		} else {
-			printf("Error : %02x\n", rsp->data[0]);
+			lprintf(LOG_ERR, "Error             : %s\n",
+				val2str(rsp->data[1], cx_fw_check_errors));
 			return -1;
 		}
 	} else if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "Firmware check failed: %s",
+		lprintf(LOG_ERR, "Error             : %s\n",
 			val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
