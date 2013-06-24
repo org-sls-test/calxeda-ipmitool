@@ -2315,6 +2315,22 @@ cx_fabric_cmd_t factory_default_cmd = {
 	{0, 0, 0, 0, 0}
 };
 
+cx_fabric_cmd_t health_monitor_cmd = {
+	"health_monitor",
+	IPMI_CMD_OEM_FABRIC_HEALTH_MONITOR,
+	1, 0,
+	{IPMI_CMD_OEM_FABRIC_PARAMETER_START,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_STOP,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_STATUS,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_DUMP, 0},
+	{ IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_CONFIG_PING,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_ICMP_PING,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_RMCP_PING, 0},
+	{0, 0, 0, 0, 0}
+};
+
 cx_fabric_param_t ipinfo_config_param = {
 	"ipinfo",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_IPINFO,
@@ -2458,11 +2474,33 @@ cx_fabric_spec_t file_config_spec = {
 	cx_fabric_string_printer
 };
 
+cx_fabric_spec_t config_ping_spec = {
+	"config_ping",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_CONFIG_PING,
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
+cx_fabric_spec_t icmp_ping_spec = {
+	"icmp_ping",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_ICMP_PING,
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
+cx_fabric_spec_t rmcp_ping_spec = {
+	"rmcp_ping",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_RMCP_PING,
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
 cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"get", Cx_Fabric_Arg_Command, (void *)&config_get_cmd},
 	{"set", Cx_Fabric_Arg_Command, (void *)&config_set_cmd},
 	{"update_config", Cx_Fabric_Arg_Command, (void *)&update_config_cmd},
 	{"factory_default", Cx_Fabric_Arg_Command, (void *)&factory_default_cmd},
+	{"health_monitor", Cx_Fabric_Arg_Command, (void *)&health_monitor_cmd},
 	{"ipinfo", Cx_Fabric_Arg_Parameter, (void *)&ipinfo_config_param},
 	{"uplink_info", Cx_Fabric_Arg_Parameter, (void *)&uplink_info_config_param},
 	{"lacp_status", Cx_Fabric_Arg_Parameter, (void *)&lacp_status_config_param},
@@ -2488,11 +2526,18 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"defgw", Cx_Fabric_Arg_Parameter, (void *)&defgw_param},
 	{"macaddr_base", Cx_Fabric_Arg_Parameter, (void *)&macaddr_base_param},
 	{"macaddr_mask", Cx_Fabric_Arg_Parameter, (void *)&macaddr_mask_param},
+	{"start", Cx_Fabric_Arg_Parameter, (void *)&start_param},
+	{"stop", Cx_Fabric_Arg_Parameter, (void *)&stop_param},
+	{"status", Cx_Fabric_Arg_Parameter, (void *)&status_param},
+	{"dump", Cx_Fabric_Arg_Parameter, (void *)&dump_param},
 	{"tftp", Cx_Fabric_Arg_Specifier, (void *)&tftp_config_spec},
 	{"port", Cx_Fabric_Arg_Specifier, (void *)&port_config_spec},
 	{"file", Cx_Fabric_Arg_Specifier, (void *)&file_config_spec},
 	{"override", Cx_Fabric_Arg_Specifier, (void *)&override_spec},
 	{"interface", Cx_Fabric_Arg_Specifier, (void *)&interface_spec},
+	{"config_ping", Cx_Fabric_Arg_Specifier, (void *)&config_ping_spec},
+	{"icmp_ping", Cx_Fabric_Arg_Specifier, (void *)&icmp_ping_spec},
+	{"rmcp_ping", Cx_Fabric_Arg_Specifier, (void *)&rmcp_ping_spec},
 	{NULL, Cx_Fabric_Arg_Invalid, (void *)NULL},
 };
 
