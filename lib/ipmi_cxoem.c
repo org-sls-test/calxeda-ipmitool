@@ -269,7 +269,7 @@ int cx_fw_download(struct ipmi_intf *intf, char *filename, int partition,
 		handle |= (unsigned int)(rsp->data[1] << 8);
 		printf("TFTP Handle ID:  %d\n", handle);
 	} else if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "Start FW download failed: %s",
+		lprintf(LOG_ERR, "Error: %s",
 			val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
@@ -317,7 +317,7 @@ int cx_fw_upload(struct ipmi_intf *intf, char *filename, int partition,
 		handle |= (unsigned int)(rsp->data[1] << 8);
 		printf("TFTP Handle ID:  %d\n", handle);
 	} else if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "Start FW upload failed: %s",
+		lprintf(LOG_ERR, "Error: %s",
 			val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
@@ -346,16 +346,16 @@ int cx_fw_register_read(struct ipmi_intf *intf, char *filename, int partition,
 
 	rsp = intf->sendrecv(intf, &req);
 	if (rsp == NULL) {
-		lprintf(LOG_ERR, "Error     : No response");
+		lprintf(LOG_ERR, "Error registering firmware read");
 		return -1;
 	}
 	if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "Error     : %s",
+		lprintf(LOG_ERR, "Error: %s",
 			val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
 	if (rsp->data_len != 0) {
-		lprintf(LOG_ERR, "Error     : Invalid response size");
+		lprintf(LOG_ERR, "Error: Invalid response size");
 		return -1;
 	}
 
@@ -383,16 +383,16 @@ int cx_fw_register_write(struct ipmi_intf *intf, char *filename, int partition,
 
 	rsp = intf->sendrecv(intf, &req);
 	if (rsp == NULL) {
-		lprintf(LOG_ERR, "Error     : No response");
+		lprintf(LOG_ERR, "Error registering firmware write");
 		return -1;
 	}
 	if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "Error     : %s",
+		lprintf(LOG_ERR, "Error: %s",
 			val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
 	if (rsp->data_len != 0) {
-		lprintf(LOG_ERR, "Error     : Invalid response size");
+		lprintf(LOG_ERR, "Error: Invalid response size");
 		return -1;
 	}
 
@@ -445,7 +445,7 @@ int cx_fw_raw(struct ipmi_intf *intf, char *filename, unsigned int address,
 
 		printf("TFTP Handle ID:  %d\n", handle);
 	} else if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "Start raw transfer failed: %s",
+		lprintf(LOG_ERR, "Error: %s",
 			val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
@@ -478,7 +478,7 @@ int cx_fw_status(struct ipmi_intf *intf, uint16_t handle)
 		return -1;
 	}
 	if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "Check FW status failed: %s",
+		lprintf(LOG_ERR, "Error: %s",
 			val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
@@ -509,7 +509,7 @@ int cx_fw_check(struct ipmi_intf *intf, int partition)
 
 	rsp = intf->sendrecv(intf, &req);
 	if (rsp == NULL) {
-		lprintf(LOG_ERR, "Error during firmware check\n");
+		lprintf(LOG_ERR, "Error during firmware check");
 		return -1;
 	}
 
@@ -522,12 +522,12 @@ int cx_fw_check(struct ipmi_intf *intf, int partition)
 			crc32 |= (unsigned int)(rsp->data[2] << 24);
 			printf("CRC32             : %08x\n", crc32);
 		} else {
-			lprintf(LOG_ERR, "Error             : %s\n",
+			lprintf(LOG_ERR, "Error: %s",
 				val2str(rsp->data[1], cx_fw_check_errors));
 			return -1;
 		}
 	} else if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "Error             : %s\n",
+		lprintf(LOG_ERR, "Error: %s",
 			val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
@@ -559,11 +559,11 @@ int cx_fw_info(struct ipmi_intf *intf, int partition)
 
 	rsp = intf->sendrecv(intf, &req);
 	if (rsp == NULL) {
-		lprintf(LOG_ERR, "Error starting fw download");
+		lprintf(LOG_ERR, "Error getting firmware info");
 		return -1;
 	}
 	if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "Start FW download failed: %s",
+		lprintf(LOG_ERR, "Error: %s",
 			val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
@@ -624,14 +624,14 @@ cx_fw_get_simg_header(struct ipmi_intf *intf, int partition,
 
 	rsp = intf->sendrecv(intf, &req);
 	if (rsp == NULL) {
-		lprintf(LOG_ERR, "Error reading SIMG info\n");
+		lprintf(LOG_ERR, "Error reading SIMG info");
 		return -1;
 	}
 
 	if (rsp->ccode == 0) {
 		memcpy(header, &rsp->data[1], sizeof(*header));
 	} else if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "SIMG read failed: %s",
+		lprintf(LOG_ERR, "Error: %s",
 			val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
@@ -663,11 +663,11 @@ int cx_fw_flags(struct ipmi_intf *intf, int partition, uint32_t flags)
 
 	rsp = intf->sendrecv(intf, &req);
 	if (rsp == NULL) {
-		lprintf(LOG_ERR, "Error starting fw download");
+		lprintf(LOG_ERR, "Error setting firmware flags");
 		return -1;
 	}
 	if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "FW set flags failed: %s",
+		lprintf(LOG_ERR, "Error: %s",
 			val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
@@ -714,7 +714,7 @@ int cx_fw_makenext(struct ipmi_intf *intf, int partition)
 		return -1;
 	}
 	if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "FW set next failed: %s",
+		lprintf(LOG_ERR, "Error: %s",
 			val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
@@ -768,12 +768,12 @@ int cx_fw_reset(struct ipmi_intf *intf)
 	rsp = intf->sendrecv(intf, &req);
 	if (rsp == NULL) {
 		lprintf(LOG_ERR,
-			"Error resetting firmware to factory default\n");
+			"Error resetting firmware to factory default");
 		return -1;
 	}
 
 	if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "Firmware reset failed: %s",
+		lprintf(LOG_ERR, "Error: %s",
 			val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
@@ -801,11 +801,11 @@ int cx_fw_version(struct ipmi_intf *intf, char *version)
 
 	rsp = intf->sendrecv(intf, &req);
 	if (rsp == NULL) {
-		lprintf(LOG_ERR, "Error starting fw download");
+		lprintf(LOG_ERR, "Error setting firmware version");
 		return -1;
 	}
 	if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "FW set version failed: %s",
+		lprintf(LOG_ERR, "Error: %s",
 			val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
@@ -826,12 +826,12 @@ int cx_fw_fru_reset(struct ipmi_intf *intf)
 	rsp = intf->sendrecv(intf, &req);
 	if (rsp == NULL) {
 		lprintf(LOG_ERR,
-			"Error resetting FRU to factory default\n");
+			"Error resetting FRU to factory default");
 		return -1;
 	}
 
 	if (rsp->ccode > 0) {
-		lprintf(LOG_ERR, "FRU reset failed: %s",
+		lprintf(LOG_ERR, "Error: %s",
 			val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
