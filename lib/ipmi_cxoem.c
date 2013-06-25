@@ -2327,7 +2327,9 @@ cx_fabric_cmd_t health_monitor_cmd = {
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_CONFIG_PING,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_ICMP_PING,
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_RMCP_PING, 0},
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_RMCP_PING, 
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_ROUTE_CHECK,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_MCAM_CHECK, 0},
 	{0, 0, 0, 0, 0}
 };
 
@@ -2495,6 +2497,20 @@ cx_fabric_spec_t rmcp_ping_spec = {
 	NULL
 };
 
+cx_fabric_spec_t route_check_spec = {
+	"route_check",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_ROUTE_CHECK,
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
+cx_fabric_spec_t mcam_check_spec = {
+	"route_check",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_MCAM_CHECK,
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
 cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"get", Cx_Fabric_Arg_Command, (void *)&config_get_cmd},
 	{"set", Cx_Fabric_Arg_Command, (void *)&config_set_cmd},
@@ -2538,6 +2554,8 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"config_ping", Cx_Fabric_Arg_Specifier, (void *)&config_ping_spec},
 	{"icmp_ping", Cx_Fabric_Arg_Specifier, (void *)&icmp_ping_spec},
 	{"rmcp_ping", Cx_Fabric_Arg_Specifier, (void *)&rmcp_ping_spec},
+	{"route_check", Cx_Fabric_Arg_Specifier, (void *)&route_check_spec},
+	{"mcam_check", Cx_Fabric_Arg_Specifier, (void *)&mcam_check_spec},
 	{NULL, Cx_Fabric_Arg_Invalid, (void *)NULL},
 };
 
