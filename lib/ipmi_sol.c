@@ -1642,7 +1642,8 @@ ipmi_sol_red_pill(struct ipmi_intf * intf)
 			else if (FD_ISSET(intf->fd, &read_fds))
 			{
 				struct ipmi_rs * rs =intf->recv_sol(intf);
-				if (! rs)
+				if (! rs ||
+					(rs->payload.sol_packet.is_nack && rs->payload.sol_packet.sol_inactive))
 				{
 					bShouldExit = bBmcClosedSession = 1;
 				}
