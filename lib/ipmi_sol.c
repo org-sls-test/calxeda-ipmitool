@@ -71,8 +71,6 @@
 #define SOL_PARAMETER_SOL_PAYLOAD_CHANNEL       0x07
 #define SOL_PARAMETER_SOL_PAYLOAD_PORT          0x08
 
-#define MAX_SOL_RETRY           		6
-
 const struct valstr sol_parameter_vals[] = {
 	{ SOL_PARAMETER_SET_IN_PROGRESS,           "Set In Progress (0)" },
 	{ SOL_PARAMETER_SOL_ENABLE,                "Enable (1)" },
@@ -92,7 +90,6 @@ static struct termios _saved_tio;
 static int            _in_raw_mode = 0;
 static int            _disable_keepalive = 0;
 static int            _use_sol_for_keepalive = 0;
-static int            _keepalive_retries = 0;
 
 extern int verbose;
 
@@ -1468,56 +1465,47 @@ processSolUserInput(
 	return retval;
 }
 
+/* FIXME: This function always returns 0 / SUCCESS; is useless
+ * Its use is currently disabled
+ */
 static int
 ipmi_sol_keepalive_using_sol(struct ipmi_intf * intf)
 {
 	struct ipmi_v2_payload v2_payload;
    struct ipmi_rs * rsp = NULL;
-	struct timeval end;
 
 	int ret = 0;
 
 	if (_disable_keepalive)
 		return 0;
 
-	gettimeofday(&end, 0);
+	memset(&v2_payload, 0, sizeof(v2_payload));
+	v2_payload.payload.sol_packet.character_count = 0;
+	rsp = intf->send_sol(intf, &v2_payload);
 
-	if (end.tv_sec - _start_keepalive.tv_sec > SOL_KEEPALIVE_TIMEOUT) {
-	   memset(&v2_payload, 0, sizeof(v2_payload));
-
-      v2_payload.payload.sol_packet.character_count = 0;
-
-      rsp = intf->send_sol(intf, &v2_payload);
-
-		gettimeofday(&_start_keepalive, 0);
-   }
 	return ret;
 }
 
 static int
 ipmi_sol_keepalive_using_getdeviceid(struct ipmi_intf * intf)
 {
-	struct timeval  end;
-	int ret = 0;
-
 	if (_disable_keepalive)
 		return 0;
 
-	gettimeofday(&end, 0);
-
-	if (end.tv_sec - _start_keepalive.tv_sec > SOL_KEEPALIVE_TIMEOUT) {
-	   ret = intf->keepalive(intf);
-	   if ( (ret!=0) && (_keepalive_retries < SOL_KEEPALIVE_RETRIES) ) {
-         ret = 0;
-         _keepalive_retries++;
-	   }
-	   else if ((ret==0) && (_keepalive_retries > 0))
-         _keepalive_retries = 0;
-		gettimeofday(&_start_keepalive, 0);
-   }
-	return ret;
+	return intf->keepalive(intf);
 }
 
+
+static int
+do_keepalive(struct ipmi_intf * intf)
+{
+	if(_use_sol_for_keepalive == 0)
+	{
+		return ipmi_sol_keepalive_using_getdeviceid(intf);
+	}
+
+	return ipmi_sol_keepalive_using_sol(intf);
+}
 
 
 /*
@@ -1536,6 +1524,7 @@ ipmi_sol_red_pill(struct ipmi_intf * intf)
 	int    buffer_size = intf->session->sol_data.max_inbound_payload_size;
 	int    keepAliveRet = 0;
 	int    retrySol = 0;
+	struct timeval  current_time;
 
 	buffer = (char*)malloc(buffer_size);
 	if (buffer == NULL) {
@@ -1555,40 +1544,32 @@ ipmi_sol_red_pill(struct ipmi_intf * intf)
 		FD_SET(intf->fd, &read_fds);
 
 		/* Send periodic keepalive packet */
-		if(_use_sol_for_keepalive == 0)
-		{
-			keepAliveRet = ipmi_sol_keepalive_using_getdeviceid(intf);
-		}
-		else
-		{
-			keepAliveRet = ipmi_sol_keepalive_using_sol(intf);
-		}
-		
-		if (keepAliveRet != 0)
-		{
+		gettimeofday(&current_time, 0);
+		if (current_time.tv_sec - _start_keepalive.tv_sec > SOL_KEEPALIVE_TIMEOUT) {
+
+			keepAliveRet = do_keepalive(intf);
+
+			retrySol = (keepAliveRet == 0)
+					? 0
+					: retrySol + 1;
+
 			/*
 			 * Retrying the keep Alive before declaring a communication
-			 * lost state with the IPMC. Helpful when the payload is 
+			 * lost state with the IPMC. Helpful when the payload is
 			 * reset and brings down the connection temporarily. Otherwise,
 			 * if we send getDevice Id to check the status of IPMC during
-			 * this down time when the connection is restarting, SOL will 
+			 * this down time when the connection is restarting, SOL will
 			 * exit even though the IPMC is available and the session is open.
 			 */
-			if (retrySol == MAX_SOL_RETRY)
+			if (retrySol >= SOL_KEEPALIVE_RETRIES)
 			{
 				/* no response to Get Device ID keepalive message */
 				bShouldExit = 1;
 				continue;
 			}
-			else 
-			{ 
-				retrySol++;         
-			}
-		}
-		else
-		{
-			/* if the keep Alive is successful reset retries to zero */
-			retrySol = 0;
+
+			/* Get next keepalive time */
+			gettimeofday(&_start_keepalive, 0);
 		}
 
 		/* Wait up to half a second */
@@ -2028,9 +2009,12 @@ ipmi_sol_main(struct ipmi_intf * intf, int argc, char ** argv)
 		}
 
 		if (argc == 2) {
-			if (!strncmp(argv[1], "usesolkeepalive", 15))
+/* FIXME:
+ * SOL-based keepalive is broken as implemented; currently don't allow it */
+/*			if (!strncmp(argv[1], "usesolkeepalive", 15))
 				_use_sol_for_keepalive = 1;
-			else if (!strncmp(argv[1], "nokeepalive", 11))
+			else */
+			if (!strncmp(argv[1], "nokeepalive", 11))
 				_disable_keepalive = 1;
 			else {
 				print_sol_usage();
