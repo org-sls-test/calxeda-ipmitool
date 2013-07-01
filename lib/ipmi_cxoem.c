@@ -3072,17 +3072,18 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 	req.msg.data_len = data_pos;
 
 	rsp = intf->sendrecv(intf, &req);
-//	lprintf(LOG_ERR, "req: netfn: 0x%x, lun: 0x%x, \n"
-//	        "cmd: 0x%x, target_cmd: 0x%x, data_len: 0x%x\n"
-//	        "data: \n"
-//	        "%02x %02x %02x %02x %02x %02x %02x %02x \n"
-//	        "%02x %02x %02x %02x %02x %02x %02x %02x \n",
-//	        req.msg.netfn, req.msg.lun, req.msg.cmd,
-//	        req.msg.target_cmd, req.msg.data_len,
-//	        req.msg.data[0], req.msg.data[1], req.msg.data[2], req.msg.data[3],
-//	        req.msg.data[4], req.msg.data[5], req.msg.data[6], req.msg.data[7],
-//	        req.msg.data[8], req.msg.data[9], req.msg.data[10], req.msg.data[11],
-//	        req.msg.data[12], req.msg.data[13], req.msg.data[14], req.msg.data[15]);
+	//	lprintf(LOG_ERR, "req: netfn: 0x%x, lun: 0x%x, \n"
+	//	        "cmd: 0x%x, target_cmd: 0x%x, data_len: 0x%x\n"
+	//	        "data: \n"
+	//	        "%02x %02x %02x %02x %02x %02x %02x %02x \n"
+	//	        "%02x %02x %02x %02x %02x %02x %02x %02x \n"
+	//	        "rsp_data 0x%x\n",
+	//	        req.msg.netfn, req.msg.lun, req.msg.cmd,
+	//	        req.msg.target_cmd, req.msg.data_len,
+	//	        req.msg.data[0], req.msg.data[1], req.msg.data[2], req.msg.data[3],
+	//	        req.msg.data[4], req.msg.data[5], req.msg.data[6], req.msg.data[7],
+	//	        req.msg.data[8], req.msg.data[9], req.msg.data[10], req.msg.data[11],
+	//	        req.msg.data[12], req.msg.data[13], req.msg.data[14], req.msg.data[15], *(rsp->data));
 	if (rsp == NULL) {
 		lprintf(LOG_ERR, "Error during fabric command\n");
 		return -1;
@@ -3091,6 +3092,9 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 	if (rsp->ccode == 0) {
 		if ((cmd->ipmi_cmd == IPMI_CMD_OEM_FABRIC_GET) ||
 		    ((cmd->ipmi_cmd == IPMI_CMD_OEM_FABRIC_CONFIG_GET) &&
+		     (param->val_len)) ||
+		    ((cmd->ipmi_cmd == IPMI_CMD_OEM_FABRIC_HEALTH_MONITOR) &&
+		     (req.msg.data[0] == IPMI_CMD_OEM_FABRIC_PARAMETER_STATUS) &&
 		     (param->val_len))) {
 			memcpy(param_value.val.scalar, rsp->data,
 			       param->val_len);
