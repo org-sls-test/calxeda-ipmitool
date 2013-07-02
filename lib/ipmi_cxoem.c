@@ -3993,10 +3993,10 @@ static const char *tps_to_string(unsigned char state)
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
 
-int better_str2val(char *str,
-		   const struct valstr *vals,
-		   int n_vals,
-		   int honor_case)
+static int index_of_string(char *str,
+                           const struct valstr *vals,
+                           int n_vals,
+                           int honor_case)
 {
 	int i;
 	int cmp;
@@ -4008,7 +4008,7 @@ int better_str2val(char *str,
 			cmp = strcasecmp(str, vals[i].str);
 		}
 		if (cmp == 0) {
-			return vals[i].val;
+			return i;
 		}
 	}
 	return -1;
@@ -4055,7 +4055,7 @@ static int cx_feature_main(struct ipmi_intf *intf, int argc, char **argv)
 	}
 
 	if (0 == rv) {
-		i = better_str2val(argv[1],
+		i = index_of_string(argv[1],
 				   oem_features,
 				   ARRAY_SIZE(oem_features),
 				   1);
@@ -4339,11 +4339,13 @@ static int cx_pmic_main(struct ipmi_intf *intf, int argc, char **argv)
 		int param;
 		int ret;
 		int handle = 0;
+		int i;
 
-		param = better_str2val(argv[1],
-				       cx_pmic_params,
-				       ARRAY_SIZE(cx_pmic_params),
-				       0);
+		i = index_of_string(argv[1],
+		                   cx_pmic_params,
+		                   ARRAY_SIZE(cx_pmic_params),
+		                   0);
+		param = cx_pmic_params[i].val;
 		if (param < 0) {
 			cx_pmic_usage();
 			return -1;
