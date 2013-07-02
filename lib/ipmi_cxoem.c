@@ -1539,7 +1539,8 @@ typedef uint8_t mac_address_t[MAC_ADDRESS_SIZE];
 #define IPV4_ADDRESS_SIZE   4
 typedef uint8_t ipv4_address_t[IPV4_ADDRESS_SIZE];
 
-#define MAX_VAL_STRING 32
+// match RSP_DATA_SIZE in oem_fabric.c
+#define MAX_VAL_STRING 64
 #define MAX_VAL_BITMAP 25
 typedef union {
 	uint8_t scalar[4];
@@ -2001,6 +2002,14 @@ cx_fabric_param_t status_param = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_param_t status_string_param = {
+	"status_string",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_STATUS_STRING,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_String, MAX_VAL_STRING,
+	cx_fabric_string_printer
+};
+
 cx_fabric_param_t dump_param = {
 	"dump",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_DUMP,
@@ -2176,6 +2185,7 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"start", Cx_Fabric_Arg_Parameter, (void *)&start_param},
 	{"stop", Cx_Fabric_Arg_Parameter, (void *)&stop_param},
 	{"status", Cx_Fabric_Arg_Parameter, (void *)&status_param},
+	{"status_string", Cx_Fabric_Arg_Parameter, (void *)&status_string_param},
 	{"dump", Cx_Fabric_Arg_Parameter, (void *)&dump_param},
 	{"node", Cx_Fabric_Arg_Specifier, (void *)&node_spec},
 	{"interface", Cx_Fabric_Arg_Specifier, (void *)&interface_spec},
@@ -2321,7 +2331,7 @@ cx_fabric_cmd_t health_monitor_cmd = {
 	1, 0,
 	{IPMI_CMD_OEM_FABRIC_PARAMETER_START,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_STOP,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_STATUS,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_STATUS_STRING,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_DUMP, 0},
 	{ IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME,
@@ -2544,7 +2554,7 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"macaddr_mask", Cx_Fabric_Arg_Parameter, (void *)&macaddr_mask_param},
 	{"start", Cx_Fabric_Arg_Parameter, (void *)&start_param},
 	{"stop", Cx_Fabric_Arg_Parameter, (void *)&stop_param},
-	{"status", Cx_Fabric_Arg_Parameter, (void *)&status_param},
+	{"status_string", Cx_Fabric_Arg_Parameter, (void *)&status_string_param},
 	{"dump", Cx_Fabric_Arg_Parameter, (void *)&dump_param},
 	{"tftp", Cx_Fabric_Arg_Specifier, (void *)&tftp_config_spec},
 	{"port", Cx_Fabric_Arg_Specifier, (void *)&port_config_spec},
@@ -3072,18 +3082,19 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 	req.msg.data_len = data_pos;
 
 	rsp = intf->sendrecv(intf, &req);
-	//	lprintf(LOG_ERR, "req: netfn: 0x%x, lun: 0x%x, \n"
-	//	        "cmd: 0x%x, target_cmd: 0x%x, data_len: 0x%x\n"
-	//	        "data: \n"
-	//	        "%02x %02x %02x %02x %02x %02x %02x %02x \n"
-	//	        "%02x %02x %02x %02x %02x %02x %02x %02x \n"
-	//	        "rsp_data 0x%x\n",
-	//	        req.msg.netfn, req.msg.lun, req.msg.cmd,
-	//	        req.msg.target_cmd, req.msg.data_len,
-	//	        req.msg.data[0], req.msg.data[1], req.msg.data[2], req.msg.data[3],
-	//	        req.msg.data[4], req.msg.data[5], req.msg.data[6], req.msg.data[7],
-	//	        req.msg.data[8], req.msg.data[9], req.msg.data[10], req.msg.data[11],
-	//	        req.msg.data[12], req.msg.data[13], req.msg.data[14], req.msg.data[15], *(rsp->data));
+	//lprintf(LOG_ERR, "req: netfn: 0x%x, lun: 0x%x, \n"
+	//"cmd: 0x%x, target_cmd: 0x%x, data_len: 0x%x\n"
+	//"data: \n"
+	//"%02x %02x %02x %02x %02x %02x %02x %02x \n"
+	//"%02x %02x %02x %02x %02x %02x %02x %02x \n"
+	//"rsp_data0 0x%x rsp_data1 0x%x\n",
+	//req.msg.netfn, req.msg.lun, req.msg.cmd,
+	//req.msg.target_cmd, req.msg.data_len,
+	//req.msg.data[0], req.msg.data[1], req.msg.data[2], req.msg.data[3],
+	//req.msg.data[4], req.msg.data[5], req.msg.data[6], req.msg.data[7],
+	//req.msg.data[8], req.msg.data[9], req.msg.data[10], req.msg.data[11],
+	//req.msg.data[12], req.msg.data[13], req.msg.data[14], req.msg.data[15],
+	//*(rsp->data), *((rsp->data)+1));
 	if (rsp == NULL) {
 		lprintf(LOG_ERR, "Error during fabric command\n");
 		return -1;
@@ -3094,7 +3105,7 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 		    ((cmd->ipmi_cmd == IPMI_CMD_OEM_FABRIC_CONFIG_GET) &&
 		     (param->val_len)) ||
 		    ((cmd->ipmi_cmd == IPMI_CMD_OEM_FABRIC_HEALTH_MONITOR) &&
-		     (req.msg.data[0] == IPMI_CMD_OEM_FABRIC_PARAMETER_STATUS) &&
+		     (req.msg.data[0] == IPMI_CMD_OEM_FABRIC_PARAMETER_STATUS_STRING) &&
 		     (param->val_len))) {
 			memcpy(param_value.val.scalar, rsp->data,
 			       param->val_len);
