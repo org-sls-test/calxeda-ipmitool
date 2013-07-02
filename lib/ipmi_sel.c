@@ -1115,7 +1115,9 @@ ipmi_sel_print_std_entry(struct ipmi_intf * intf, struct sel_event_record * evt)
 		printf("Reading %.*f %s Threshold %.*f %s",
 		       (trigger_reading==(int)trigger_reading) ? 0 : 2,
 		       trigger_reading,
-		       ((evt->sel_type.standard_type.event_data[0] & 0xf) % 2) ? ">" : "<",
+		       (((evt->sel_type.standard_type.event_data[0] & 0xf) % 2)
+				       ^ evt->sel_type.standard_type.event_dir)
+				       ? ">" : "<",
 		       (threshold_reading==(int)threshold_reading) ? 0 : 2,
 		       threshold_reading,
 		       ipmi_sdr_get_unit_string(sdr->record.full->unit.modifier,
