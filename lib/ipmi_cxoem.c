@@ -3880,11 +3880,28 @@ static int cx_info_main(struct ipmi_intf *intf, int argc, char **argv)
 					   old versions will return that, so
 					   we'll just go with it. */
 					case 0:
+						strcpy(board_type, "Tile card");
+						break;
 					case 1:
 						strcpy(board_type, "EnergyCard");
 						break;
+					case 3:
+						strcpy(board_type, "Cooper4");
+						break;
 					case 7:
 						strcpy(board_type, "Slingshot");
+						break;
+					case 8:
+						strcpy(board_type, "Cumulus");
+						break;
+					case 9:
+						strcpy(board_type, "Catapult");
+						break;
+					case 10:
+						strcpy(board_type, "TN Dual Node");
+						break;
+					case 11:
+						strcpy(board_type, "TN Dual Node, Uplink");
 						break;
 					default:
 						sprintf(board_type, "Unknown (%X)", card_rs->card_id);
