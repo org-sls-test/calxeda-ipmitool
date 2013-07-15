@@ -3852,12 +3852,16 @@ static int cx_info_main(struct ipmi_intf *intf, int argc, char **argv)
 		if (cx_is_CalxedaSoc(intf, FALSE)) {
 		}
 	} else if (strncmp(argv[0], "card", 4) == 0) {
+
 		struct oem_device_info_card_s {
 			uint16_t	card_id;
 			uint16_t	card_rev;
+			uint32_t	magic;
+			char		card_str[80];
 		} __attribute__ ((packed));
+
 		typedef struct oem_device_info_card_s oem_device_info_card_t;
-		char board_type[32];
+		char board_type[80];
 
 		oem_device_info_card_t *card_rs;
 		card_rs = (void *) rs_data;
@@ -3874,42 +3878,46 @@ static int cx_info_main(struct ipmi_intf *intf, int argc, char **argv)
 					    ("command failed with 0x%X completion code\n",
 					     completion_code & 0xFF);
 					rv = -1;
-				} else {
+				} else if (card_rs->magic != 0xDEAD9001) {
 					switch (card_rs->card_id) {
 					/* Case 0 isn't really energycard, but
 					   old versions will return that, so
 					   we'll just go with it. */
 					case 0:
-						strcpy(board_type, "Tile card");
+						strcpy(board_type, "Calxeda Tile card");
 						break;
 					case 1:
-						strcpy(board_type, "EnergyCard");
+						strcpy(board_type, "Calxeda EnergyCard");
 						break;
 					case 3:
-						strcpy(board_type, "Cooper4");
+						strcpy(board_type, "Calxeda Cooper4");
 						break;
 					case 7:
-						strcpy(board_type, "Slingshot");
+						strcpy(board_type, "Calxeda Slingshot");
 						break;
 					case 8:
-						strcpy(board_type, "Cumulus");
+						strcpy(board_type, "Calxeda Cumulus");
 						break;
 					case 9:
-						strcpy(board_type, "Catapult");
+						strcpy(board_type, "Calxeda Catapult");
 						break;
 					case 10:
-						strcpy(board_type, "TN Dual Node");
+						strcpy(board_type, "Calxeda TN Dual Node");
 						break;
 					case 11:
-						strcpy(board_type, "TN Dual Node, Uplink");
+						strcpy(board_type, "Calxeda TN Dual Node, Uplink");
 						break;
 					default:
 						sprintf(board_type, "Unknown (%X)", card_rs->card_id);
 						break;
-					}
-					printf("  Board Type: %s\n", board_type);
-					printf("  Board Revision: %d\n", card_rs->card_rev);
+					} 
+				} else {
+				        strncpy(&board_type, card_rs->card_str, 80);
 				}
+					
+				printf("  Board Type: %s\n", board_type);
+				printf("  Board Revision: %d\n", card_rs->card_rev);
+				
 			}
 
 		}
