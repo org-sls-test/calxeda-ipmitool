@@ -2347,7 +2347,7 @@ cx_fabric_cmd_t health_monitor_cmd = {
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_CONFIG_PING,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_ICMP_PING,
-	 IPMI_CMD_OEM_FABRIC_SPECIFIER_RMCP_PING, 
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_RMCP_PING,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_ROUTE_CHECK,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_MCAM_CHECK, 0},
 	{0, 0, 0, 0, 0}
@@ -3816,6 +3816,15 @@ tboolean cx_is_CalxedaSoc(struct ipmi_intf * intf, tboolean to_print)
 						       basic_rs->rev2.firmware_version);
 						printf("  SoC Version: %s\n",
 						       basic_rs->rev2.ecme_version);
+						if (rs_data_size > sizeof(basic_rs->rev2)
+								&&
+								rs_data_size <= sizeof(basic_rs->rev2_5)) {
+							printf("  EEPROM Image Version: %s\n",
+							       basic_rs->rev2_5.eeprom_version);
+							printf("  EEPROM CFG id: %s\n",
+							       basic_rs->rev2_5.cfg_version);
+
+						}
 						lt = basic_rs->rev2.ecme_timestamp;
 						printf("  Timestamp (%d): %s\n",
 						       basic_rs->rev2.ecme_timestamp,
@@ -3920,14 +3929,14 @@ static int cx_info_main(struct ipmi_intf *intf, int argc, char **argv)
 					default:
 						sprintf(board_type, "Unknown (%X)", card_rs->card_id);
 						break;
-					} 
+					}
 				} else {
 				        strncpy(&board_type, card_rs->card_str, 80);
 				}
-					
+
 				printf("  Board Type: %s\n", board_type);
 				printf("  Board Revision: %d\n", card_rs->card_rev);
-				
+
 			}
 
 		}

@@ -212,6 +212,17 @@ typedef union cx_info_basic_u {
 		uint32_t ecme_timestamp;
 		char firmware_version[32];
 	} __attribute__ ((packed)) rev2;
+
+	/* Revision 2.5 -- an extended rev 2 */
+	struct {
+		uint32_t iana;
+		uint8_t parameter_revision;
+		char ecme_version[32];
+		uint32_t ecme_timestamp;
+		char firmware_version[32];
+		char eeprom_version[20];
+		char cfg_version[8];
+	} __attribute__ ((packed)) rev2_5;
 } cx_info_basic_t;
 
 
