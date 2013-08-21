@@ -3171,7 +3171,7 @@ static void cx_info_usage(void)
 		"\n"
 		"Type Commands: \n"
 		"\n"
-		"  basic \n" "  partnum \n" "  chassis \n" "  card \n" "  node \n" "\n");
+		"  basic \n" "  card \n" "  node \n" "\n");
 }
 
 /* Interpret the string pointed to by valrep according to the length contraint
