@@ -3819,10 +3819,14 @@ tboolean cx_is_CalxedaSoc(struct ipmi_intf * intf, tboolean to_print)
 						if (rs_data_size > sizeof(basic_rs->rev2)
 								&&
 								rs_data_size <= sizeof(basic_rs->rev2_5)) {
-							printf("  EEPROM Image Version: %s\n",
-							       basic_rs->rev2_5.eeprom_version);
-							printf("  EEPROM CFG id: %s\n",
-							       basic_rs->rev2_5.cfg_version);
+							printf("  Node EEPROM Image Version: %s\n",
+							       basic_rs->rev2_5.node_eeprom_version);
+							printf("  Node EEPROM CFG id: %s\n",
+							       basic_rs->rev2_5.node_cfg_version);
+							printf("  Slot EEPROM Image Version: %s\n",
+							       basic_rs->rev2_5.slot_eeprom_version);
+							printf("  Slot EEPROM CFG id: %s\n",
+							       basic_rs->rev2_5.slot_cfg_version);
 
 						}
 						lt = basic_rs->rev2.ecme_timestamp;

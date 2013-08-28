@@ -220,8 +220,10 @@ typedef union cx_info_basic_u {
 		char ecme_version[32];
 		uint32_t ecme_timestamp;
 		char firmware_version[32];
-		char eeprom_version[20];
-		char cfg_version[8];
+		char node_eeprom_version[32];
+		char node_cfg_version[8];
+		char slot_eeprom_version[32];
+		char slot_cfg_version[8];
 	} __attribute__ ((packed)) rev2_5;
 } cx_info_basic_t;
 
