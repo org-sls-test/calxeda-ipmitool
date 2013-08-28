@@ -1383,7 +1383,6 @@ cx_fabric_cmd_t get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITION_NODES,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITION_RANGE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_BASE,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_NUM,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_CUSTOMER_MACADDR,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR,
@@ -1419,7 +1418,6 @@ cx_fabric_cmd_t set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITIONID,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_PROFILEID,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_BASE,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_NUM,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
@@ -1979,14 +1977,6 @@ cx_fabric_param_t ipaddr_base_param = {
 	cx_fabric_ipv4_printer
 };
 
-cx_fabric_param_t ipaddr_num_param = {
-	"ipaddr_num",
-	IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_NUM,
-	{0, 0, 0, 0, 0},
-	Cx_Fabric_Arg_Value_Scalar, 2,
-	cx_fabric_scalar_printer
-};
-
 cx_fabric_param_t start_param = {
 	"start",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_START,
@@ -2152,7 +2142,6 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"factory_default", Cx_Fabric_Arg_Command, (void *)&factory_default_node_cmd},
 	{"trace", Cx_Fabric_Arg_Command, (void *)&trace_cmd},
 	{"ipaddr_base", Cx_Fabric_Arg_Parameter, (void *)&ipaddr_base_param},
-	{"ipaddr_num", Cx_Fabric_Arg_Parameter, (void *)&ipaddr_num_param},
 	{"ipaddr", Cx_Fabric_Arg_Parameter, (void *)&ipaddr_param},
 	{"ipsrc", Cx_Fabric_Arg_Parameter, (void *)&ipsrc_param},
 	{"netmask", Cx_Fabric_Arg_Parameter, (void *)&netmask_param},
@@ -2232,7 +2221,6 @@ cx_fabric_cmd_t config_get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NODENUM_OFFSET,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_BASE,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_NUM,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NETMASK,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_DEFGW,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
@@ -2284,7 +2272,6 @@ cx_fabric_cmd_t config_set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NODENUM_OFFSET,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_BASE,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_NUM,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NETMASK,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_DEFGW,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
@@ -2557,7 +2544,6 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"lu_factor", Cx_Fabric_Arg_Parameter,
 	 (void *)&link_users_factor_param},
 	{"ipaddr_base", Cx_Fabric_Arg_Parameter, (void *)&ipaddr_base_param},
-	{"ipaddr_num", Cx_Fabric_Arg_Parameter, (void *)&ipaddr_num_param},
 	{"netmask", Cx_Fabric_Arg_Parameter, (void *)&netmask_param},
 	{"defgw", Cx_Fabric_Arg_Parameter, (void *)&defgw_param},
 	{"macaddr_base", Cx_Fabric_Arg_Parameter, (void *)&macaddr_base_param},
