@@ -167,6 +167,44 @@ ipmi_get_user_name(
 }
 
 
+int ipmi_get_user_access_by_name(
+			struct ipmi_intf *intf,
+			uint8_t channel_number,
+		    uint8_t user_name[17],
+		    struct user_access_rsp *user_access)
+{
+	uint8_t current_user_id = 0;
+	uint8_t current_user_name[17];
+	int found = 0;
+
+	do
+	{
+		if (ipmi_get_user_access(intf,
+					 channel_number,
+					 current_user_id,
+					 user_access))
+			return -1;
+
+		if (ipmi_get_user_name(intf,
+				       current_user_id,
+				       current_user_name))
+			return -1;
+
+		if(strcmp(user_name, current_user_name) == 0) {
+			found = 1;
+			break;
+		}
+
+		++current_user_id;
+	} while((current_user_id <= user_access->maximum_ids) &&
+			(current_user_id <= 63)); /* Absolute maximum allowed by spec */
+
+	if(!found) {
+		return -1;
+	}
+
+	return 0;
+}
 
 
 static void

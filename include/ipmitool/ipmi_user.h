@@ -82,7 +82,11 @@ struct user_access_rsp {
 #endif
 } __attribute__ ((packed));
 
-
+int ipmi_get_user_access_by_name(
+			struct ipmi_intf *intf,
+			uint8_t channel_number,
+		    uint8_t user_name[17],
+		    struct user_access_rsp *user_access);
 
 int ipmi_user_main(struct ipmi_intf *, int, char **);
 
