@@ -55,6 +55,7 @@
 #include <ipmitool/ipmi_channel.h>
 #include <ipmitool/ipmi_intf.h>
 #include <ipmitool/ipmi_strings.h>
+#include <ipmitool/ipmi_user.h>
 #include <ipmitool/bswap.h>
 #include <openssl/rand.h>
 
@@ -3287,6 +3288,7 @@ ipmi_lanplus_open(struct ipmi_intf * intf)
 	struct get_channel_auth_cap_rsp auth_cap;
 	struct sockaddr_in addr;
 	struct ipmi_session *session;
+	struct user_access_rsp user_access;
 
 	if (!intf || !intf->session)
 		return -1;
@@ -3417,6 +3419,18 @@ ipmi_lanplus_open(struct ipmi_intf * intf)
 
 	bridgePossible = 1;
 
+	if (ipmi_get_user_access_by_name(
+			     intf,
+			     0x0E,
+			     intf->session->username,
+			     &user_access)) {
+		lprintf(LOG_ERR, "Error: Unable to get user privileges for %s\n",
+				intf->session->username);
+	}
+
+	intf->session->privlvl = intf->session->privlvl <= user_access.channel_privilege_limit
+		? intf->session->privlvl
+		: user_access.channel_privilege_limit;
 	rc = ipmi_set_session_privlvl_cmd(intf);
 	if (rc < 0)
 		goto fail;
