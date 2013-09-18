@@ -624,6 +624,8 @@ ipmi_sel_get_oem_sensor_type_offset(IPMI_OEM iana, uint8_t code, uint8_t offset)
 	switch(iana){
 		case IPMI_OEM_KONTRON:
 			st = oem_kontron_event_types;	
+		case IPMI_OEM_CALXEDA:
+			st = sensor_specific_types;	
 		break;
 		/* add you oem sensor type lookup assignement here */
 		default:
