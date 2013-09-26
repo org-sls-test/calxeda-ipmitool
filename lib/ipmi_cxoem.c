@@ -85,6 +85,7 @@
 #define CX_DATA_BAD_LENGTH -2
 #define CX_DATA_OK 0
 
+#define CX_MAX_PTYPE 0x11
 const struct valstr cx_ptypes[] = {
 	{0x00, "DEL"},
 	{0x01, "DEL1"},
@@ -102,6 +103,8 @@ const struct valstr cx_ptypes[] = {
 	{0x0d, "BOOT_LOG"},
 	{0x0e, "UEFI_ENV"},
 	{0x0f, "DIAG_ELF"},
+	{0x10, "XACTION_LOG"},
+	{0x11, "ROM_INFO"},
 };
 
 const struct valstr cx_tftp_status[] = {
@@ -879,7 +882,7 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 				type = strtol(argv[3], (char **)NULL, 10);
 			} else {
 				type = str2val(argv[3], cx_ptypes);
-				if (type < 1 || type > 14)
+				if (type < 1 || type > CX_MAX_PTYPE)
 					errno = -1;
 			}
 			if (!errno) {
@@ -948,7 +951,7 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 				type = strtol(argv[3], (char **)NULL, 10);
 			} else {
 				type = str2val(argv[3], cx_ptypes);
-				if (type < 1 || type > 14)
+				if (type < 1 || type > CX_MAX_PTYPE)
 					errno = -1;
 			}
 			if (!errno) {
@@ -1016,7 +1019,7 @@ int cx_fw_main(struct ipmi_intf *intf, int argc, char **argv)
 				type = strtol(argv[4], (char **)NULL, 10);
 			} else {
 				type = str2val(argv[4], cx_ptypes);
-				if (type < 1 || type > 14)
+				if (type < 1 || type > CX_MAX_PTYPE)
 					errno = -1;
 			}
 			if (!errno) {
