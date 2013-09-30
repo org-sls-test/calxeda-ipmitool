@@ -181,7 +181,7 @@ typedef struct simg_header_s {
 
 struct cx_fw_info_rs {
 	unsigned char ver;	/* param version */
-	unsigned int count;	/* number of bytes */
+	unsigned char count;	/* number of bytes */
 	img_info_t img_info;
 } __attribute__ ((packed));
 

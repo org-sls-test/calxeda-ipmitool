@@ -575,7 +575,8 @@ int cx_fw_info(struct ipmi_intf *intf, int partition)
 		return -1;
 
 	s = (struct cx_fw_info_rs *)&rsp->data[0];
-	count = s->count / sizeof(img_info_t);
+	count = rsp->data_len / sizeof(img_info_t);
+
 	memcpy(ii, &s->img_info, count * sizeof(img_info_t));
 
 	printf("\n");
