@@ -198,6 +198,8 @@ static void cx_fabric_usage(void)
 		"  set|get nodenum_offset <offset>\n"
 		"  set|get macaddrs tftp <tftp_server_addr> port <tftp_server_port> file <filename>\n"
 		"  set|get mtu <standard|jumbo>\n"
+		"      get uplink_info\n"
+		"      get uplink_status\n"
 		"  set|get uplink <uplink_id> node <node_id> interface <interface_id>\n"
 		"    where mode is:\n"
 		"      0 - all interfaces go to Uplink0\n"
@@ -1392,6 +1394,7 @@ cx_fabric_cmd_t get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_CUSTOMER_MACADDR,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_SPEED,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_STATUS,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_INFO,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_CHASSIS_SERIAL_NUM,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_BCVEC},
@@ -1546,7 +1549,7 @@ typedef uint8_t mac_address_t[MAC_ADDRESS_SIZE];
 typedef uint8_t ipv4_address_t[IPV4_ADDRESS_SIZE];
 
 // match RSP_DATA_SIZE in oem_fabric.c
-#define MAX_VAL_STRING 64
+#define MAX_VAL_STRING 80
 #define MAX_VAL_BITMAP 25
 #define SERIAL_NUM_SIZE 24
 typedef union {
@@ -1797,6 +1800,14 @@ cx_fabric_param_t uplink_speed_param = {
 	{0, 0, 0, 0, 0},
 	Cx_Fabric_Arg_Value_Scalar, 1,
 	cx_fabric_scalar_printer
+};
+
+cx_fabric_param_t uplink_status_param = {
+	"uplink_status",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_STATUS,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_String, MAX_VAL_STRING,
+	cx_fabric_string_printer
 };
 
 cx_fabric_param_t uplink_info_param = {
@@ -2194,6 +2205,7 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	 (void *)&link_users_factor_param},
 	{"uplink_speed", Cx_Fabric_Arg_Parameter, (void *)&uplink_speed_param},
 	{"uplink_info", Cx_Fabric_Arg_Parameter, (void *)&uplink_info_param},
+	{"uplink_status", Cx_Fabric_Arg_Parameter, (void *)&uplink_status_param},
 	{"bcvec", Cx_Fabric_Arg_Parameter, (void *)&bcvec_param},
 	{"linkmap", Cx_Fabric_Arg_Parameter, (void *)&linkmap_param},
 	{"depth_chart", Cx_Fabric_Arg_Parameter, (void *)&depth_chart_param},
@@ -2394,6 +2406,14 @@ cx_fabric_param_t uplink_info_config_param = {
 	NULL
 };
 
+cx_fabric_param_t uplink_status_config_param = {
+	"uplink_status",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_STATUS,
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
 cx_fabric_param_t lacp_status_config_param = {
 	"lacp_status",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_LACP_STATUS,
@@ -2564,6 +2584,7 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"health_monitor", Cx_Fabric_Arg_Command, (void *)&health_monitor_cmd},
 	{"ipinfo", Cx_Fabric_Arg_Parameter, (void *)&ipinfo_config_param},
 	{"uplink_info", Cx_Fabric_Arg_Parameter, (void *)&uplink_info_config_param},
+	{"uplink_status", Cx_Fabric_Arg_Parameter, (void *)&uplink_status_config_param},
 	{"lacp_status", Cx_Fabric_Arg_Parameter, (void *)&lacp_status_config_param},
 	{"ntp_server", Cx_Fabric_Arg_Parameter, (void *)&ntp_server_config_param},
 	{"ntp_port", Cx_Fabric_Arg_Parameter, (void *)&ntp_port_config_param},
