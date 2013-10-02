@@ -1322,6 +1322,7 @@ typedef enum {
 	Cx_Fabric_Arg_Value_IPV4_Address,
 	Cx_Fabric_Arg_Value_MAC_Address,
 	Cx_Fabric_Arg_Value_Bitmap,
+	Cx_Fabric_Arg_Value_Serial_Num,
 } cx_fabric_arg_type_t;
 
 typedef struct {
@@ -1392,6 +1393,7 @@ cx_fabric_cmd_t get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_SPEED,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_INFO,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_CHASSIS_SERIAL_NUM,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_BCVEC},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
@@ -1423,6 +1425,7 @@ cx_fabric_cmd_t set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_PROFILEID,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_BASE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_CHASSIS_SERIAL_NUM,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
@@ -1545,12 +1548,14 @@ typedef uint8_t ipv4_address_t[IPV4_ADDRESS_SIZE];
 // match RSP_DATA_SIZE in oem_fabric.c
 #define MAX_VAL_STRING 64
 #define MAX_VAL_BITMAP 25
+#define SERIAL_NUM_SIZE 24
 typedef union {
 	uint8_t scalar[4];
 	mac_address_t mac_addr;
 	ipv4_address_t ipv4_addr;
 	char string[MAX_VAL_STRING];
 	uint8_t bitmap[MAX_VAL_BITMAP];
+	uint8_t serial_num[SERIAL_NUM_SIZE];
 } cx_fabric_value_u;
 
 typedef struct {
@@ -1668,6 +1673,25 @@ void cx_fabric_mac_printer(void *data, int len)
 	       val->val.mac_addr[0], val->val.mac_addr[1], val->val.mac_addr[2],
 	       val->val.mac_addr[3], val->val.mac_addr[4],
 	       val->val.mac_addr[5]);
+	return;
+}
+
+void cx_fabric_serial_num_printer(void *data, int len)
+{
+	cx_fabric_value_t *val = (cx_fabric_value_t *) data;
+	printf(" %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
+	       val->val.serial_num[0], val->val.serial_num[1], 
+		   val->val.serial_num[2], val->val.serial_num[3], 
+		   val->val.serial_num[4], val->val.serial_num[5],
+	       val->val.serial_num[6], val->val.serial_num[7], 
+		   val->val.serial_num[8], val->val.serial_num[9], 
+		   val->val.serial_num[10], val->val.serial_num[11], 
+		   val->val.serial_num[12], val->val.serial_num[13], 
+		   val->val.serial_num[14], val->val.serial_num[15], 
+		   val->val.serial_num[16], val->val.serial_num[17],
+	       val->val.serial_num[18], val->val.serial_num[19], 
+		   val->val.serial_num[20], val->val.serial_num[21], 
+		   val->val.serial_num[22], val->val.serial_num[23]);
 	return;
 }
 
@@ -2022,6 +2046,14 @@ cx_fabric_param_t dump_param = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_param_t chassis_serial_num_param = {
+	"chassis_serial_num",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_CHASSIS_SERIAL_NUM,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_Serial_Num, SERIAL_NUM_SIZE,
+	cx_fabric_serial_num_printer
+};
+
 cx_fabric_spec_t node_spec = {
 	"node",
 	IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
@@ -2190,6 +2222,8 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"status", Cx_Fabric_Arg_Parameter, (void *)&status_param},
 	{"status_string", Cx_Fabric_Arg_Parameter, (void *)&status_string_param},
 	{"dump", Cx_Fabric_Arg_Parameter, (void *)&dump_param},
+	{"chassis_serial_num", Cx_Fabric_Arg_Parameter, 
+		(void *)&chassis_serial_num_param},
 	{"node", Cx_Fabric_Arg_Specifier, (void *)&node_spec},
 	{"interface", Cx_Fabric_Arg_Specifier, (void *)&interface_spec},
 	{"link", Cx_Fabric_Arg_Specifier, (void *)&link_spec},
@@ -2574,6 +2608,7 @@ cx_fabric_find_arg_type(cx_fabric_arg_t * arg_type_list, char *arg)
 {
 	int i, ip0, ip1, ip2, ip3;
 	int mac0, mac1, mac2, mac3, mac4, mac5;
+	int sn[SERIAL_NUM_SIZE];
 	int ls0, ls1;
 	int val;
 	int ret;
@@ -2594,11 +2629,21 @@ cx_fabric_find_arg_type(cx_fabric_arg_t * arg_type_list, char *arg)
 	// If not, is it an expected value type (Scalar, String,
 	//              IPV4 address, MAC address
 
+	// Is it a Serial Number?
+	if ((sscanf(arg, "%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
+		    &sn[0], &sn[1], &sn[2], &sn[3], &sn[4], &sn[5],
+		    &sn[6], &sn[7], &sn[8], &sn[9], &sn[10], &sn[11],
+		    &sn[12], &sn[13], &sn[14], &sn[15], &sn[16], &sn[17],
+		    &sn[18], &sn[19], &sn[20], &sn[21], &sn[22], &sn[23])) == 24) {
+		return Cx_Fabric_Arg_Value_Serial_Num;
+	}
+
 	// Is it a MAC Address?
 	if ((sscanf(arg, "%02x:%02x:%02x:%02x:%02x:%02x",
 		    &mac0, &mac1, &mac2, &mac3, &mac4, &mac5)) == 6) {
 		return Cx_Fabric_Arg_Value_MAC_Address;
 	}
+
 	// Is it an IPV4 Address?
 	if ((sscanf(arg, "%d.%d.%d.%d", &ip0, &ip1, &ip2, &ip3)) == 4) {
 		return Cx_Fabric_Arg_Value_IPV4_Address;
@@ -2746,6 +2791,36 @@ cx_fabric_get_value(cx_fabric_arg_type_t val_type, char *arg,
 			value->val.mac_addr[2], value->val.mac_addr[3],
 			value->val.mac_addr[4], value->val.mac_addr[5]);
 
+		break;
+	case Cx_Fabric_Arg_Value_Serial_Num:
+		sscanf(arg, "%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
+		   (int *)&value->val.serial_num[0], (int *)&value->val.serial_num[1],
+	       (int *)&value->val.serial_num[2], (int *)&value->val.serial_num[3],
+	       (int *)&value->val.serial_num[4], (int *)&value->val.serial_num[5],
+	       (int *)&value->val.serial_num[6], (int *)&value->val.serial_num[7],
+	       (int *)&value->val.serial_num[8], (int *)&value->val.serial_num[9],
+	       (int *)&value->val.serial_num[10], (int *)&value->val.serial_num[11],
+	       (int *)&value->val.serial_num[12], (int *)&value->val.serial_num[13],
+	       (int *)&value->val.serial_num[14], (int *)&value->val.serial_num[15],
+	       (int *)&value->val.serial_num[16], (int *)&value->val.serial_num[17],
+	       (int *)&value->val.serial_num[18], (int *)&value->val.serial_num[19],
+	       (int *)&value->val.serial_num[20], (int *)&value->val.serial_num[21],
+	       (int *)&value->val.serial_num[22], (int *)&value->val.serial_num[23]);
+
+		value->val_len = SERIAL_NUM_SIZE;
+		fprintf(stdout, "Serial Num = %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
+			value->val.serial_num[0], value->val.serial_num[1],
+			value->val.serial_num[2], value->val.serial_num[3],
+			value->val.serial_num[4], value->val.serial_num[5],
+			value->val.serial_num[6], value->val.serial_num[7],
+			value->val.serial_num[8], value->val.serial_num[9],
+			value->val.serial_num[10], value->val.serial_num[11],
+			value->val.serial_num[12], value->val.serial_num[13],
+			value->val.serial_num[14], value->val.serial_num[15],
+			value->val.serial_num[16], value->val.serial_num[17],
+			value->val.serial_num[18], value->val.serial_num[19],
+			value->val.serial_num[20], value->val.serial_num[21],
+			value->val.serial_num[22], value->val.serial_num[23]);
 		break;
 	case Cx_Fabric_Arg_Value_Bitmap:
 		memset(value->val.bitmap, 0, MAX_VAL_BITMAP);
@@ -3029,6 +3104,15 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 				for (i = 0; i < param_value.val_len; i++) {
 					msg_data[data_pos++] =
 					    param_value.val.bitmap[i];
+				}
+				msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
+				break;
+			case Cx_Fabric_Arg_Value_Serial_Num:
+				msg_data[data_pos++] =
+				    MSG_PARAM_VAL_START_SERIAL_NUM;
+				for (i = 0; i < param_value.val_len; i++) {
+					msg_data[data_pos++] =
+					    param_value.val.serial_num[i]; 
 				}
 				msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
 				break;
@@ -4471,6 +4555,8 @@ int ipmi_cxoem_main(struct ipmi_intf *intf, int argc, char **argv)
 	} else if (!strncmp(argv[0], "fw", 2)) {
 		rc = cx_fw_main(intf, argc - 1, &argv[1]);
 	} else if (!strncmp(argv[0], "fabric", 6)) {
+		rc = cx_fabric_main(intf, argc - 1, &argv[1]);
+	} else if (!strncmp(argv[0], "fru", 6)) {
 		rc = cx_fabric_main(intf, argc - 1, &argv[1]);
 	} else if (!strncmp(argv[0], "data", 4)) {
 		rc = cx_data_main(intf, argc - 1, &argv[1]);
