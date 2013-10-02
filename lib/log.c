@@ -30,6 +30,8 @@
  * EVEN IF SUN HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
  */
 
+#define _BSD_SOURCE
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,6 +41,8 @@
 #include <string.h>
 
 #include <ipmitool/log.h>
+
+#define LOG_MSG_LENGTH		1024
 
 struct logpriv_s {
 	char * name;
@@ -54,7 +58,6 @@ static void log_reinit(void)
 
 void lprintf(int level, const char * format, ...)
 {
-	static char logmsg[LOG_MSG_LENGTH];
 	va_list vptr;
 
 	if (!logpriv)
@@ -64,19 +67,19 @@ void lprintf(int level, const char * format, ...)
 		return;
 
 	va_start(vptr, format);
-	vsnprintf(logmsg, LOG_MSG_LENGTH, format, vptr);
+	if (logpriv->daemon) {
+		vsyslog(level, format, vptr);
+	} else {
+		vfprintf(stderr, format, vptr);
+		fprintf(stderr, "\r\n");
+	}
 	va_end(vptr);
-
-	if (logpriv->daemon)
-		syslog(level, "%s", logmsg);
-	else
-		fprintf(stderr, "%s\r\n", logmsg);
 	return;
 }
 
 void lperror(int level, const char * format, ...)
 {
-	static char logmsg[LOG_MSG_LENGTH];
+	char logmsg[LOG_MSG_LENGTH];
 	va_list vptr;
 
 	if (!logpriv)

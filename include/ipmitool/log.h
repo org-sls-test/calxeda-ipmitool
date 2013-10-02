@@ -50,7 +50,6 @@
 #define LOG_WARN		LOG_WARNING
 
 #define LOG_NAME_DEFAULT	"ipmitool"
-#define LOG_MSG_LENGTH		1024
 
 void log_init(const char * name, int isdaemon, int verbose);
 void log_halt(void);
