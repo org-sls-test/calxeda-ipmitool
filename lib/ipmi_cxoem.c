@@ -2404,14 +2404,6 @@ cx_fabric_param_t uplink_info_config_param = {
 	NULL
 };
 
-cx_fabric_param_t uplink_status_config_param = {
-	"uplink_status",
-	IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_STATUS,
-	{IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 0, 0, 0, 0},
-	Cx_Fabric_Arg_Invalid, 0,
-	NULL
-};
-
 cx_fabric_param_t lacp_status_config_param = {
 	"lacp_status",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_LACP_STATUS,
@@ -2582,7 +2574,6 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"health_monitor", Cx_Fabric_Arg_Command, (void *)&health_monitor_cmd},
 	{"ipinfo", Cx_Fabric_Arg_Parameter, (void *)&ipinfo_config_param},
 	{"uplink_info", Cx_Fabric_Arg_Parameter, (void *)&uplink_info_config_param},
-	{"uplink_status", Cx_Fabric_Arg_Parameter, (void *)&uplink_status_config_param},
 	{"lacp_status", Cx_Fabric_Arg_Parameter, (void *)&lacp_status_config_param},
 	{"ntp_server", Cx_Fabric_Arg_Parameter, (void *)&ntp_server_config_param},
 	{"ntp_port", Cx_Fabric_Arg_Parameter, (void *)&ntp_port_config_param},
