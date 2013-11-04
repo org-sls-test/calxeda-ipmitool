@@ -221,10 +221,12 @@ static void cx_feature_usage(void)
 		"Usage: ipmitool cxoem feature <status|enable|disable> <feature> \n"
 		"\n"
 		"Feature to Enable/Disable/Query are:\n"
-		"  selaging : SEL Aging or Circular SEL buffer\n"
-		"  hwwd     : Hardware Watchdog\n"
-		"  tps      : Thermal Protection System (Status Only)\n"
-		"  mansen   : Override for manual sensors monitoring\n"
+		"  selaging          : SEL Aging or Circular SEL buffer\n"
+		"  hwwd              : Hardware Watchdog\n"
+		"  tps               : Thermal Protection System (Status Only)\n"
+		"  mansen            : Override for manual sensors monitoring\n"
+		"  crash_log_protect : Protect the crash log from being "
+			"overwritten if it has not been read\n"
 		"\n"
 		"Ex: ipmitool cxoem feature status selaging\n"
 		"Ex: ipmitool cxoem feature enable hwwd\n" "\n");
@@ -1681,17 +1683,17 @@ void cx_fabric_serial_num_printer(void *data, int len)
 {
 	cx_fabric_value_t *val = (cx_fabric_value_t *) data;
 	printf(" %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
-	       val->val.serial_num[0], val->val.serial_num[1], 
-		   val->val.serial_num[2], val->val.serial_num[3], 
+	       val->val.serial_num[0], val->val.serial_num[1],
+		   val->val.serial_num[2], val->val.serial_num[3],
 		   val->val.serial_num[4], val->val.serial_num[5],
-	       val->val.serial_num[6], val->val.serial_num[7], 
-		   val->val.serial_num[8], val->val.serial_num[9], 
-		   val->val.serial_num[10], val->val.serial_num[11], 
-		   val->val.serial_num[12], val->val.serial_num[13], 
-		   val->val.serial_num[14], val->val.serial_num[15], 
+	       val->val.serial_num[6], val->val.serial_num[7],
+		   val->val.serial_num[8], val->val.serial_num[9],
+		   val->val.serial_num[10], val->val.serial_num[11],
+		   val->val.serial_num[12], val->val.serial_num[13],
+		   val->val.serial_num[14], val->val.serial_num[15],
 		   val->val.serial_num[16], val->val.serial_num[17],
-	       val->val.serial_num[18], val->val.serial_num[19], 
-		   val->val.serial_num[20], val->val.serial_num[21], 
+	       val->val.serial_num[18], val->val.serial_num[19],
+		   val->val.serial_num[20], val->val.serial_num[21],
 		   val->val.serial_num[22], val->val.serial_num[23]);
 	return;
 }
@@ -2232,7 +2234,7 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"status", Cx_Fabric_Arg_Parameter, (void *)&status_param},
 	{"status_string", Cx_Fabric_Arg_Parameter, (void *)&status_string_param},
 	{"dump", Cx_Fabric_Arg_Parameter, (void *)&dump_param},
-	{"chassis_serial_num", Cx_Fabric_Arg_Parameter, 
+	{"chassis_serial_num", Cx_Fabric_Arg_Parameter,
 		(void *)&chassis_serial_num_param},
 	{"node", Cx_Fabric_Arg_Specifier, (void *)&node_spec},
 	{"interface", Cx_Fabric_Arg_Specifier, (void *)&interface_spec},
@@ -3122,7 +3124,7 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 				    MSG_PARAM_VAL_START_SERIAL_NUM;
 				for (i = 0; i < param_value.val_len; i++) {
 					msg_data[data_pos++] =
-					    param_value.val.serial_num[i]; 
+					    param_value.val.serial_num[i];
 				}
 				msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
 				break;
@@ -4170,6 +4172,7 @@ static int cx_feature_main(struct ipmi_intf *intf, int argc, char **argv)
 		{0x02, "hwwd"},
 		{0x03, "tps"},
 		{0x04, "mansen"},
+		{0x05, "crash_log_protect"},
 	};
 	int rv = 0;
 	int i;
