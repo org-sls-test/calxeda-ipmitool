@@ -28,7 +28,7 @@
 #include <ipmitool/ipmi.h>
 #include <ipmitool/ipmi_sdr.h>
 
-#define CX_VERSION				"-cx7"
+#define CX_VERSION				"-cx8"
 #define IPMI_NETFN_OEM_SS		0x3e
 
 /*
