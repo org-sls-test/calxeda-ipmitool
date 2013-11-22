@@ -1360,6 +1360,15 @@ cx_fabric_cmd_t update_cmd = {
 	{0, 0, 0, 0, 0}
 };
 
+cx_fabric_cmd_t config_rm_cmd = {
+	"rm",
+	IPMI_CMD_OEM_FABRIC_CONFIG_RM,
+	1, 1,
+	{IPMI_CMD_OEM_FABRIC_PARAMETER_NETWORK, 0, 0, 0, 0},
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_UPLINK, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0}
+};
+
 cx_fabric_cmd_t factory_default_node_cmd = {
 	"factory_default",
 	IPMI_CMD_OEM_FABRIC_FACTORY_DEFAULT,
@@ -1382,11 +1391,11 @@ cx_fabric_cmd_t get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NODEID,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_CONFIGURATIONID,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_PROFILEID,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_NETWORK,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITION_NODES,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITION_RANGE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_BASE,
@@ -1404,6 +1413,7 @@ cx_fabric_cmd_t get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_ACTUAL,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_CONFIGURATION,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_MAC,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PARTITION,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PROFILE},
 	{0, 0, 0, 0, 0}
@@ -1419,13 +1429,13 @@ cx_fabric_cmd_t set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPSRC,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_SERVER,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_CUSTOMER_MACADDR,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_CONFIGURATIONID,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITIONID,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_PROFILEID,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_NETWORK,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_BASE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_CHASSIS_SERIAL_NUM,
@@ -1436,6 +1446,7 @@ cx_fabric_cmd_t set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_CONFIGURATION,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PARTITION,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_MAC,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PROFILE},
 	{0, 0, 0, 0, 0}
 };
@@ -1449,8 +1460,10 @@ cx_fabric_cmd_t add_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITION_NODES,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITION_RANGE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_PARTITIONID,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_MACLINK,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_PROFILEID},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PARTITION,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_CONFIGURATION, 0, 0},
@@ -1716,6 +1729,14 @@ cx_fabric_param_t ntp_server_param = {
 	cx_fabric_ipv4_printer
 };
 
+cx_fabric_param_t network_param = {
+	"network",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_NETWORK,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Value_String, 20,
+	cx_fabric_string_printer
+};
+
 cx_fabric_param_t ntp_port_param = {
 	"ntp_port",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_NTP_PORT,
@@ -1826,16 +1847,6 @@ cx_fabric_param_t bcvec_param = {
 	cx_fabric_string_printer
 };
 
-cx_fabric_param_t uplink_param = {
-	"uplink",
-	IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK,
-	{IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
-	 0, 0, 0, 0}
-	,
-	Cx_Fabric_Arg_Value_Scalar, 1,
-	cx_fabric_scalar_printer
-};
-
 cx_fabric_param_t cust_macaddr_param = {
 	"customer_macaddr",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_CUSTOMER_MACADDR,
@@ -1853,6 +1864,24 @@ cx_fabric_param_t macaddr_param = {
 	Cx_Fabric_Arg_Value_MAC_Address, 6,
 	cx_fabric_mac_printer
 };
+
+cx_fabric_param_t maclink_param = {
+	"maclink",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_MACLINK,
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE, 
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_LINK, 0, 0, 0},
+	Cx_Fabric_Arg_Value_MAC_Address, 6,
+	cx_fabric_mac_printer
+};
+
+cx_fabric_param_t mgmt_mode_param = {
+	"mgmt_mode",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_MGMT_MODE,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Invalid, MAX_VAL_STRING,
+	cx_fabric_string_printer
+};
+
 
 cx_fabric_param_t linkmap_param = {
 	"linkmap",
@@ -2072,6 +2101,20 @@ cx_fabric_spec_t node_spec = {
 	cx_fabric_scalar_printer
 };
 
+cx_fabric_spec_t uplink_spec = {
+	"uplink",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_UPLINK,
+	Cx_Fabric_Arg_Value_Bitmap, MAX_VAL_BITMAP,
+	cx_fabric_bitmap_printer
+};
+
+cx_fabric_spec_t cmc_mac_spec = {
+	"cmc_mac",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_CMC_MAC,
+	Cx_Fabric_Arg_Value_MAC_Address, 6,
+	cx_fabric_mac_printer
+};
+
 cx_fabric_spec_t interface_spec = {
 	"interface",
 	IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
@@ -2096,6 +2139,20 @@ cx_fabric_spec_t override_spec = {
 cx_fabric_spec_t actual_spec = {
 	"actual",
 	IPMI_CMD_OEM_FABRIC_SPECIFIER_ACTUAL,
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
+cx_fabric_spec_t private_spec = {
+	"private",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_PRIVATE,
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
+cx_fabric_spec_t shared_spec = {
+	"shared",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_SHARED,
 	Cx_Fabric_Arg_Invalid, 0,
 	NULL
 };
@@ -2197,9 +2254,11 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"defgw", Cx_Fabric_Arg_Parameter, (void *)&defgw_param},
 	{"customer_macaddr", Cx_Fabric_Arg_Parameter, (void *)&cust_macaddr_param},
 	{"macaddr", Cx_Fabric_Arg_Parameter, (void *)&macaddr_param},
+	{"maclink", Cx_Fabric_Arg_Parameter, (void *)&maclink_param},
 	{"nodeid", Cx_Fabric_Arg_Parameter, (void *)&nodeid_param},
 	{"linkspeed", Cx_Fabric_Arg_Parameter, (void *)&linkspeed_param},
 	{"link_resilience", Cx_Fabric_Arg_Parameter, (void *)&link_resilience_param},
+	{"network", Cx_Fabric_Arg_Parameter, (void *)&network_param},
 	{"ls_policy", Cx_Fabric_Arg_Parameter, (void *)&linkspeed_policy_param},
 	{"lu_factor", Cx_Fabric_Arg_Parameter,
 	 (void *)&link_users_factor_param},
@@ -2223,7 +2282,6 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"mac_watch", Cx_Fabric_Arg_Parameter, (void *)&mac_watch_param},
 	{"uplink_stats", Cx_Fabric_Arg_Parameter, (void *)&uplink_stats_param},
 	{"uplink_watch", Cx_Fabric_Arg_Parameter, (void *)&uplink_watch_param},
-	{"uplink", Cx_Fabric_Arg_Parameter, (void *)&uplink_param},
 	{"configid", Cx_Fabric_Arg_Parameter, (void *)&configurationid_param},
 	{"partid", Cx_Fabric_Arg_Parameter, (void *)&partitionid_param},
 	{"profileid", Cx_Fabric_Arg_Parameter, (void *)&profileid_param},
@@ -2262,7 +2320,6 @@ cx_fabric_cmd_t config_get_cmd = {
 	{IPMI_CMD_OEM_FABRIC_PARAMETER_IPINFO,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPSRC,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MTU,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_MODE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDRS,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
@@ -2272,6 +2329,7 @@ cx_fabric_cmd_t config_get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NODENUM_OFFSET,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_BASE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NETMASK,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_NETWORK,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_DEFGW,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR,
@@ -2279,6 +2337,9 @@ cx_fabric_cmd_t config_get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LACP_STATUS,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR_BASE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR_MASK,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_NETWORKS,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINKS,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_MGMT_MODE,
 	},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
@@ -2286,6 +2347,7 @@ cx_fabric_cmd_t config_get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_ACTUAL,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_MAC,
 	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
 	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
 	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
@@ -2313,7 +2375,6 @@ cx_fabric_cmd_t config_set_cmd = {
 	{IPMI_CMD_OEM_FABRIC_PARAMETER_IPINFO,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPSRC,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MTU,
-	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_MODE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDRS,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
@@ -2322,21 +2383,24 @@ cx_fabric_cmd_t config_set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_RESILIENCE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NODENUM_OFFSET,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_BASE,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_NETWORK,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_NETMASK,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_DEFGW,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR_BASE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_MACADDR_MASK,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_MGMT_MODE,
 	},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_TFTP,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PORT,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_OVERRIDE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
-	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
-	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
-	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_MAC,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PRIVATE,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_SHARED,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_CMC_MAC,
 	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
 	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
 	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
@@ -2352,6 +2416,16 @@ cx_fabric_cmd_t config_set_cmd = {
 	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
 	 IPMI_CMD_OEM_SPECIFIER_UNDEF,
 	}
+};
+
+cx_fabric_cmd_t config_add_cmd = {
+	"add",
+	IPMI_CMD_OEM_FABRIC_CONFIG_ADD,
+	1, 1,
+	{IPMI_CMD_OEM_FABRIC_PARAMETER_NETWORK, 0, 0, 0, 0},
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_UPLINK, 
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PRIVATE, 0, 0, 0},	// permitted specifiers
+	{0, 0, 0, 0, 0}
 };
 
 cx_fabric_cmd_t update_config_cmd = {
@@ -2470,6 +2544,22 @@ cx_fabric_param_t macaddrs_config_param = {
 	NULL
 };
 
+cx_fabric_param_t networks_config_param = {
+	"networks",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_NETWORKS,
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 0, 0, 0},
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
+cx_fabric_param_t uplinks_config_param = {
+	"uplinks",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINKS,
+	{IPMI_CMD_OEM_FABRIC_SPECIFIER_FILENAME, 0, 0, 0},
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
 cx_fabric_param_t linkspeed_config_param = {
 	"linkspeed",
 	IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED,
@@ -2571,6 +2661,8 @@ cx_fabric_spec_t mcam_check_spec = {
 cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"get", Cx_Fabric_Arg_Command, (void *)&config_get_cmd},
 	{"set", Cx_Fabric_Arg_Command, (void *)&config_set_cmd},
+	{"add", Cx_Fabric_Arg_Command, (void *)&config_add_cmd},
+	{"rm", Cx_Fabric_Arg_Command, (void *)&config_rm_cmd},
 	{"update_config", Cx_Fabric_Arg_Command, (void *)&update_config_cmd},
 	{"factory_default", Cx_Fabric_Arg_Command, (void *)&factory_default_cmd},
 	{"health_monitor", Cx_Fabric_Arg_Command, (void *)&health_monitor_cmd},
@@ -2584,8 +2676,10 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"mtu", Cx_Fabric_Arg_Parameter, (void *)&mtu_config_param},
 	{"uplink_mode", Cx_Fabric_Arg_Parameter,
 	 (void *)&uplink_mode_config_param},
-	{"uplink", Cx_Fabric_Arg_Parameter, (void *)&uplink_param},
 	{"macaddrs", Cx_Fabric_Arg_Parameter, (void *)&macaddrs_config_param},
+	{"networks", Cx_Fabric_Arg_Parameter, (void *)&networks_config_param},
+	{"mgmt_mode", Cx_Fabric_Arg_Parameter, (void *)&mgmt_mode_param},
+	{"uplinks", Cx_Fabric_Arg_Parameter, (void *)&uplinks_config_param},
 	{"linkspeed", Cx_Fabric_Arg_Parameter, (void *)&linkspeed_config_param},
 	{"link_resilience", Cx_Fabric_Arg_Parameter,
 	 (void *)&link_resilience_config_param},
@@ -2602,6 +2696,11 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"stop", Cx_Fabric_Arg_Parameter, (void *)&stop_param},
 	{"status_string", Cx_Fabric_Arg_Parameter, (void *)&status_string_param},
 	{"dump", Cx_Fabric_Arg_Parameter, (void *)&dump_param},
+	{"network", Cx_Fabric_Arg_Parameter, (void *)&network_param},
+	{"uplink", Cx_Fabric_Arg_Specifier, (void *)&uplink_spec},
+	{"cmc_mac", Cx_Fabric_Arg_Specifier, (void *)&cmc_mac_spec},
+	{"private", Cx_Fabric_Arg_Specifier, (void *)&private_spec},
+	{"shared", Cx_Fabric_Arg_Specifier, (void *)&shared_spec},
 	{"tftp", Cx_Fabric_Arg_Specifier, (void *)&tftp_config_spec},
 	{"port", Cx_Fabric_Arg_Specifier, (void *)&port_config_spec},
 	{"file", Cx_Fabric_Arg_Specifier, (void *)&file_config_spec},
@@ -2612,6 +2711,7 @@ cx_fabric_arg_t cx_fabric_config_arg[] = {
 	{"rmcp_ping", Cx_Fabric_Arg_Specifier, (void *)&rmcp_ping_spec},
 	{"route_check", Cx_Fabric_Arg_Specifier, (void *)&route_check_spec},
 	{"mcam_check", Cx_Fabric_Arg_Specifier, (void *)&mcam_check_spec},
+	{"mac", Cx_Fabric_Arg_Specifier, (void *)&mac_spec},
 	{NULL, Cx_Fabric_Arg_Invalid, (void *)NULL},
 };
 
@@ -2922,8 +3022,8 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 				}
 				if (arg_type != param->val_type) {
 					lprintf(LOG_ERR,
-						"Invalid value type for parameter %s\n",
-						param->keyword);
+						"Invalid value type for parameter %s :%s:\n",
+						param->keyword, argv[cur_arg]);
 					return -1;
 				}
 
@@ -2954,6 +3054,11 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 				arg_type = cx_fabric_find_arg_type(args,
 								   argv
 								   [cur_arg]);
+
+				if ((arg_type == Cx_Fabric_Arg_Value_Scalar) && 
+					(spec[spec_count]->val_type == Cx_Fabric_Arg_Value_Bitmap)){
+					arg_type = Cx_Fabric_Arg_Value_Bitmap;
+				}
 				if (arg_type != spec[spec_count]->val_type) {
 					lprintf(LOG_ERR,
 						"Invalid value type for specifier %s\n",
@@ -2974,7 +3079,7 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 			}
 			spec_count++;
 		} else {
-			lprintf(LOG_ERR, "Unexpected argument\n");
+			lprintf(LOG_ERR, "Unexpected argument .%s.\n", argv[cur_arg]);
 			goto cx_fabric_main_error_out;
 		}
 
@@ -3165,9 +3270,9 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 		case Cx_Fabric_Arg_Value_Bitmap:
 			msg_data[data_pos++] =
 			    MSG_PARAM_VAL_START_BITMAP;
-			for (i = 0; i < param_value.val_len; i++) {
+			for (i = 0; i < spec_value[j].val_len; i++) {
 				msg_data[data_pos++] =
-				    param_value.val.bitmap[i];
+				    spec_value[j].val.bitmap[i];
 			}
 			msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
 			break;
