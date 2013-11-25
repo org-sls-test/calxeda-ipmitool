@@ -3343,7 +3343,7 @@ cx_fabric_cmd_parser(struct ipmi_intf *intf,
 			param->printer(&param_value, param->val_len);
 		}
 	} else {
-		lprintf(LOG_ERR, "Command failed: %s",
+		lprintf(LOG_ERR, "Command failed: %s\n",
 			val2str(rsp->ccode, completion_code_vals));
 		return -1;
 	}
@@ -3363,6 +3363,573 @@ int cx_fabric_main(struct ipmi_intf *intf, int argc, char **argv)
 	} else {
 		cx_fabric_cmd_parser(intf, cx_fabric_main_arg, argc, &argv[0]);
 	}
+}
+
+/* logging */
+typedef enum {
+	Cx_Logging_Arg_Invalid,
+	Cx_Logging_Arg_Command,
+	Cx_Logging_Arg_Parameter,
+	Cx_Logging_Arg_Specifier,
+	Cx_Logging_Arg_Value_Scalar,
+	Cx_Logging_Arg_Value_String,
+} cx_logging_arg_type_t;
+
+typedef struct {
+	char *keyword;
+	cx_logging_arg_type_t arg_type;
+	void *data;
+} cx_logging_arg_t;
+
+typedef union {
+	uint8_t scalar[4];
+	ipv4_address_t ipv4_addr;
+	char string[MAX_VAL_STRING];
+} cx_logging_value_u;
+
+typedef struct {
+	cx_logging_arg_type_t val_type;
+	cx_logging_value_u val;
+	uint8_t val_len;
+} cx_logging_value_t;
+
+typedef struct {
+	char *keyword;
+	uint8_t spec;
+	cx_logging_arg_type_t val_type;
+	int val_len;
+	void (*printer) (void *data, int len);
+} cx_logging_spec_t;
+
+typedef struct {
+	char *keyword;
+	uint8_t param;
+	uint8_t required_specifiers[MAX_REQUIRED_SPECIFIERS];
+	cx_logging_arg_type_t val_type;
+	int val_len;
+	void (*printer) (void *data, int len);
+} cx_logging_param_t;
+
+void cx_logging_string_printer(void *data, int len)
+{	cx_logging_value_t *val = (cx_logging_value_t *) data;
+
+	printf("%s\n", val->val.string);
+	return;
+}
+
+void cx_logging_ipv4_printer(void *data, int len)
+{
+	cx_logging_value_t *val = (cx_logging_value_t *) data;
+	printf("%d.%d.%d.%d\n", val->val.ipv4_addr[0],
+		val->val.ipv4_addr[1], val->val.ipv4_addr[2],
+		val->val.ipv4_addr[3]);
+	return;
+}
+
+void cx_logging_scalar_printer(void *data, int len)
+{
+	int i;
+	cx_logging_value_t *val = (cx_logging_value_t *) data;
+	int value = 0;
+
+	for (i = 0; i < len; i++) {
+		 value |= (val->val.scalar[i] << (8 * i));
+	}
+	printf("%d\n", value);
+	return;
+}
+
+void cx_logging_list_modules_printer(void *data, int len)
+{
+	cx_logging_value_t *val = (cx_logging_value_t *) data;
+	char *mod_str;
+
+	mod_str = strtok(val->val.string, " ");
+	while (mod_str != NULL) {
+		printf("%s\n", mod_str);
+		mod_str = strtok(NULL, " ");
+	}
+}
+
+typedef struct {
+	char *keyword;
+	uint8_t ipmi_cmd;
+	uint8_t parameter_required;
+	uint8_t parameter_value_expected;
+	uint8_t permitted_params[MAX_PERMITTED_PARAMS];
+	uint8_t permitted_specifiers[MAX_PERMITTED_SPECIFIERS];
+	uint8_t required_specifiers[MAX_REQUIRED_SPECIFIERS];
+} cx_logging_cmd_t;
+
+cx_logging_cmd_t logging_list_modules_cmd = {
+	"list_modules",
+	IPMI_CMD_OEM_LOGGING_LIST_MODULES,
+	0, 0,
+	{0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0}
+};
+
+cx_logging_cmd_t logging_get_cmd = {
+	"get",
+	IPMI_CMD_OEM_LOGGING_GET,
+	1, 0,
+	{IPMI_CMD_OEM_LOGGING_PARAMETER_LEVEL},
+	{IPMI_CMD_OEM_LOGGING_SPECIFIER_MODULE,
+	 IPMI_CMD_OEM_LOGGING_SPECIFIER_ENDPOINT},
+	{0, 0, 0, 0, 0}
+};
+
+cx_logging_cmd_t logging_set_cmd = {
+	"set",
+	IPMI_CMD_OEM_LOGGING_SET,
+	1, 1,
+	{IPMI_CMD_OEM_LOGGING_PARAMETER_LEVEL},
+	{IPMI_CMD_OEM_LOGGING_SPECIFIER_MODULE,
+	 IPMI_CMD_OEM_LOGGING_SPECIFIER_ENDPOINT},
+	{0, 0, 0, 0, 0}
+};
+cx_logging_param_t logging_level_param = {
+	"level",
+	IPMI_CMD_OEM_LOGGING_PARAMETER_LEVEL,
+	{0, 0, 0, 0, 0}
+	,
+	Cx_Logging_Arg_Value_Scalar, 4,
+	cx_logging_scalar_printer
+};
+
+cx_logging_spec_t logging_module_spec = {
+	"module",
+	IPMI_CMD_OEM_LOGGING_SPECIFIER_MODULE,
+	Cx_Logging_Arg_Value_String, 6,
+	cx_logging_scalar_printer
+};
+
+cx_logging_spec_t logging_endpoint_spec = {
+	"endpoint",
+	IPMI_CMD_OEM_LOGGING_SPECIFIER_ENDPOINT,
+	Cx_Logging_Arg_Value_String, 8,
+	cx_logging_scalar_printer
+};
+cx_logging_arg_t cx_logging_main_arg[] = {
+	{"list_modules", Cx_Logging_Arg_Command, (void *)&logging_list_modules_cmd},
+	{"get", Cx_Logging_Arg_Command, (void *)&logging_get_cmd},
+	{"set", Cx_Logging_Arg_Command, (void *)&logging_set_cmd},
+	{"level", Cx_Logging_Arg_Parameter, (void *)&logging_level_param},
+	{"module", Cx_Logging_Arg_Specifier, (void *)&logging_module_spec},
+	{"endpoint", Cx_Logging_Arg_Specifier, (void *)&logging_endpoint_spec},
+	{NULL, Cx_Fabric_Arg_Invalid, (void *)NULL},
+};
+
+static void cx_logging_usage(void)
+{
+	lprintf(LOG_NOTICE,
+		 "\n"
+		 "Usage: ipmitool cxoem logging <command> [option...]\n"
+		 "\n"
+		 "Logging Commands: \n"
+		 "\n"
+		 "  list_modules\n"
+		 "  set|get level <level>\n"
+		 "\n"
+		 "Ex: ipmitool cxoem logging get level module ipmi\n"
+		 "\n"
+		 "  set|get level <level> [module <module_name>] [endpoint <endpoint>]\n"
+		 "\n"
+		 "Ex: ipmitool cxoem logging set level X module ipmi endpoint serial\n"
+		 "\n");
+}
+
+int
+cx_logging_get_value(cx_logging_arg_type_t val_type, char *arg,
+		     cx_logging_value_t * value)
+{
+	int val;
+
+	value->val_type = val_type;
+	switch (val_type) {
+	case Cx_Logging_Arg_Value_Scalar:
+		 val = strtol(arg, NULL, 10);
+		 value->val.scalar[0] = val & 0xff;
+		 value->val.scalar[1] = ((val >> 8) & 0xff);
+		 value->val.scalar[2] = ((val >> 16) & 0xff);
+		 value->val.scalar[3] = ((val >> 24) & 0xff);
+		 value->val_len = 4;
+		 break;
+	case Cx_Logging_Arg_Value_String:
+		 strncpy(value->val.string, arg, MAX_VAL_STRING);
+		 value->val_len = strlen(value->val.string);
+		 break;
+	default:
+		 return -1;
+		 break;
+	};
+	return 0;
+}
+cx_logging_arg_type_t
+cx_logging_find_arg_type(cx_logging_arg_t * arg_type_list, char *arg)
+{
+	int i;
+	int ls0, ls1;
+	int val;
+
+	errno = 0;
+
+	// First see if it is a standard type (Command, Parameter, Specifier)
+	i = 0;
+	while (arg_type_list[i].keyword != NULL) {
+		 if ((strlen(arg) == strlen(arg_type_list[i].keyword)) &&
+		     !strncasecmp(arg, arg_type_list[i].keyword,
+				    strlen(arg_type_list[i].keyword))) {
+			  return arg_type_list[i].arg_type;
+		 }
+		 i++;
+	}
+
+	// If not, is it an expected value type (Scalar, String)
+
+	if ((sscanf(arg, "%d.%d", &ls0, &ls1)) == 2) {
+		 return Cx_Logging_Arg_Value_Scalar;
+	}
+	// Is it a string?
+	if (isalpha(arg[0])) {
+		 // Probably...
+		 return Cx_Logging_Arg_Value_String;
+	}
+
+	// Is it scalar?
+	val = strtol(arg, NULL, 10);
+	if (errno == 0) {
+		 return Cx_Logging_Arg_Value_Scalar;
+	}
+
+	return Cx_Logging_Arg_Invalid;
+}
+
+cx_logging_cmd_t *cx_logging_get_cmd(cx_logging_arg_t * arg_type_list, char *arg)
+{
+	int i;
+
+	errno = 0;
+
+	i = 0;
+	while (arg_type_list[i].keyword != NULL) {
+		 if (!strncasecmp(arg, arg_type_list[i].keyword,
+				    strlen(arg_type_list[i].keyword))) {
+			  return ((cx_logging_cmd_t *) arg_type_list[i].data);
+		 }
+		 i++;
+	}
+	return NULL;
+}
+
+cx_logging_param_t *cx_logging_get_param(cx_logging_arg_t * arg_type_list,
+					   char *arg)
+{
+	int i;
+
+	errno = 0;
+
+	i = 0;
+	while (arg_type_list[i].keyword != NULL) {
+		 if (!strncasecmp(arg, arg_type_list[i].keyword,
+				    strlen(arg_type_list[i].keyword))) {
+			  return ((cx_logging_param_t *) arg_type_list[i].data);
+		 }
+		 i++;
+	}
+	return NULL;
+}
+cx_logging_spec_t *cx_logging_get_spec(cx_logging_arg_t * arg_type_list, char *arg)
+{
+	int i;
+
+	errno = 0;
+
+	i = 0;
+	while (arg_type_list[i].keyword != NULL) {
+		 if (!strncasecmp(arg, arg_type_list[i].keyword,
+				    strlen(arg_type_list[i].keyword))) {
+			  return ((cx_logging_spec_t *) arg_type_list[i].data);
+		 }
+		 i++;
+	}
+	return NULL;
+}
+
+
+
+int
+cx_logging_cmd_parser(struct ipmi_intf *intf,
+		      cx_logging_arg_t * args, int argc, char **argv)
+{
+	int ret, ind, jind, cur_arg = 0;
+	cx_logging_arg_type_t arg_type;
+	struct ipmi_rq req;
+	struct ipmi_rs *rsp;
+	uint8_t msg_data[128];
+	cx_logging_cmd_t *cmd = NULL;
+	cx_logging_param_t *param = NULL;
+	cx_logging_value_t param_value;
+	cx_logging_spec_t *spec[] =
+		{NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+	cx_logging_value_t spec_value[MAX_SPECS];
+	uint8_t spec_count = 0, req_specs = 0, req_specs_found = 0;
+	int data_pos = 0;
+
+	if (argc < 1 || strncmp(argv[0], "help", 4) == 0) {
+		cx_logging_usage();
+		return 0;
+	}
+
+	param_value.val_type = Cx_Logging_Arg_Invalid;
+	memset(&spec_value[0], 0, MAX_SPECS * sizeof(cx_logging_value_t));
+	memset(&req, 0, sizeof(req));
+	memset(msg_data, 0, 128);
+	req.msg.netfn = IPMI_NETFN_OEM_SS;
+	// Each argument is either a command, parameter, value, or specifier
+	// Commands are list_modules, get, set
+	// Parameters are level
+	// Specifiers are module, endpoint
+	// Values can be a decimal number or string
+
+	while (cur_arg < argc) {
+		arg_type = cx_logging_find_arg_type(args, argv[cur_arg]);
+
+		if (arg_type == Cx_Logging_Arg_Command) {
+			cmd = cx_logging_get_cmd(args, argv[cur_arg]);
+			if (cmd == NULL) {
+				lprintf(LOG_NOTICE,
+						"No defined activity for cmd %s\n",
+						argv[cur_arg]);
+				cur_arg++;
+				continue;
+			}
+			req.msg.cmd = cmd->ipmi_cmd;
+		} else if (arg_type == Cx_Logging_Arg_Parameter) {
+			param = cx_logging_get_param(args, argv[cur_arg]);
+
+			if ((cmd && cmd->parameter_value_expected) &&
+					(param->val_type != Cx_Logging_Arg_Invalid)) {
+
+				if ((cur_arg + 1) >= argc) {
+					printf("No value specified for parameter %s\n",
+							param->keyword);
+					return -1;
+				}
+				// Now we need to look at its value
+				cur_arg++;
+
+				arg_type = cx_logging_find_arg_type(args,
+						argv
+						[cur_arg]);
+				if (arg_type != param->val_type) {
+					printf("Invalid value type for parameter %s\n",
+							param->keyword);
+					return -1;
+				}
+
+				ret = cx_logging_get_value(arg_type, argv[cur_arg],
+							      &param_value);
+			} else if (!cmd) {
+				lprintf(LOG_ERR, "No valid command specified\n");
+				goto cx_logging_main_error_out;
+			}
+		} else if (arg_type == Cx_Logging_Arg_Specifier) {
+			spec[spec_count] = cx_logging_get_spec(args, argv[cur_arg]);
+
+			if (spec[spec_count]->val_type != Cx_Logging_Arg_Invalid) {
+				cur_arg++;
+				if ((cur_arg) >= argc) {
+					printf("No value specified for specifier %s\n",
+							spec[spec_count]->keyword);
+					return -1;
+				}
+				// Now we need to look at its value
+				arg_type = cx_logging_find_arg_type(args,
+						argv
+						[cur_arg]);
+				if (arg_type != spec[spec_count]->val_type) {
+					printf("Invalid value type for specifier %s\n",
+							spec[spec_count]->keyword);
+					return -1;
+				}
+
+				ret = cx_logging_get_value(arg_type, argv[cur_arg],
+							      &spec_value
+							      [spec_count]);
+			} else {
+				spec_value[spec_count].val_type =
+						Cx_Logging_Arg_Invalid;
+				spec_value[spec_count].val.scalar[0] = 0;
+				spec_value[spec_count].val_len = 1;
+			}
+			spec_count++;
+		} else {
+			lprintf(LOG_ERR, "Unexpected argument\n");
+			goto cx_logging_main_error_out;
+		}
+
+		cur_arg++;
+	}
+	if (cmd == NULL) {
+		goto cx_logging_main_error_out;
+	}
+	// Now, sanity check everything before forming the message
+	// Does this command require a parameter, if so do we have one?
+	if (cmd->parameter_required) {
+		if (param == NULL) {
+			lprintf(LOG_ERR, "Required parameter for cmd %s "
+					"missing\n", cmd->keyword);
+			goto cx_logging_main_error_out;
+		}
+	}
+	// Does this command accept the parameter being passed?
+	if (param) {
+		for (ind = 0; ind < MAX_PERMITTED_PARAMS; ind++) {
+			if (param->param == cmd->permitted_params[ind]) {
+				break;
+			}
+		}
+		if (ind == MAX_PERMITTED_PARAMS) {
+			lprintf(LOG_ERR, "Parameter %s not permitted for "
+					"cmd %s\n", param->keyword,
+					cmd->keyword);
+			goto cx_logging_main_error_out;
+		}
+	}
+	// Does this command accept the specifiers that are given
+	for (jind = 0; jind < MAX_SPECS; jind++) {
+		if (spec[jind]) {
+			for (ind = 0; ind < MAX_PERMITTED_SPECIFIERS; ind++) {
+				if (spec[jind]->spec ==
+					cmd->permitted_specifiers[ind]) {
+					break;
+				}
+			}
+			if (ind == MAX_PERMITTED_SPECIFIERS) {
+				lprintf(LOG_ERR, "Specifier %s not permitted "
+						"for cmd %s\n",
+						spec[jind]->keyword,
+						cmd->keyword);
+				goto cx_logging_main_error_out;
+			}
+		}
+	}
+	// Are all required specifiers for the command present?
+	for (jind = 0; jind < MAX_REQUIRED_SPECIFIERS; jind++) {
+		if (cmd->required_specifiers[jind] != 0) {
+			req_specs++;
+			for (ind = 0; ind < MAX_SPECS; ind++) {
+				if (spec[ind] && (spec[ind]->spec ==
+					cmd->required_specifiers[jind])) {
+					req_specs_found++;
+				}
+			}
+		}
+	}
+	if (req_specs != req_specs_found) {
+		lprintf(LOG_ERR, "Required specifiers for command %s missing\n",
+				cmd->keyword);
+		goto cx_logging_main_error_out;
+	}
+	// Are all the required specifiers for the parameter present
+	if (param) {
+		for (jind = 0; jind < MAX_REQUIRED_SPECIFIERS; jind++) {
+			if (param->required_specifiers[jind] != 0) {
+				req_specs++;
+				for (ind = 0; ind < MAX_SPECS; ind++) {
+					if (spec[ind] && (spec[ind]->spec ==
+						param->required_specifiers[jind])) {
+						req_specs_found++;
+					}
+				}
+			}
+		}
+	}
+	if (req_specs != req_specs_found) {
+		lprintf(LOG_ERR,
+				"Required specifiers for parameter %s missing\n",
+				param->keyword);
+		goto cx_logging_main_error_out;
+	}
+	// Start filling in msg_data
+	if (param) {
+		msg_data[data_pos++] = param->param;
+
+		if (param_value.val_type != Cx_Logging_Arg_Invalid) {
+			switch (param_value.val_type) {
+			case Cx_Logging_Arg_Value_Scalar:
+				msg_data[data_pos++] =
+						MSG_PARAM_VAL_START_SCALAR;
+				for (ind = 0; ind < param_value.val_len; ind++) {
+					msg_data[data_pos++] =
+							param_value.val.scalar[ind];
+				}
+				msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
+				break;
+			case Cx_Logging_Arg_Value_String:
+				msg_data[data_pos++] =
+						MSG_PARAM_VAL_START_STRING;
+				for (ind = 0; ind < param_value.val_len; ind++) {
+					msg_data[data_pos++] =
+							param_value.val.string[ind];
+				}
+				msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
+				break;
+			}
+		}
+	}
+	for (jind = 0; jind < spec_count; jind++) {
+		msg_data[data_pos++] = spec[jind]->spec;
+		switch (spec[jind]->val_type) {
+		case Cx_Logging_Arg_Value_Scalar:
+			for (ind = 0; ind < spec_value[jind].val_len; ind++) {
+				msg_data[data_pos++] =
+						spec_value[jind].val.scalar[ind];
+			}
+			msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
+			break;
+		case Cx_Logging_Arg_Value_String:
+			for (ind = 0; ind < spec_value[jind].val_len; ind++) {
+				msg_data[data_pos++] =
+						spec_value[jind].val.string[ind];
+			}
+			msg_data[data_pos++] = MSG_ELEMENT_TERMINATOR;
+			break;
+		}
+	}
+
+	req.msg.data = msg_data;
+	req.msg.data_len = data_pos;
+	rsp = intf->sendrecv(intf, &req);
+	if (rsp == NULL) {
+		printf("Error during logging command\n");
+		return -1;
+	}
+
+	if (rsp->ccode == 0) {
+		if (cmd->ipmi_cmd == IPMI_CMD_OEM_LOGGING_LIST_MODULES) {
+			cx_logging_value_t val;
+			memcpy(val.val.string, rsp->data, MAX_VAL_STRING);
+			cx_logging_list_modules_printer(&val, MAX_VAL_STRING);
+		} else if ((cmd->ipmi_cmd == IPMI_CMD_OEM_LOGGING_GET) &&
+				param && (param->val_len)) {
+			memcpy(param_value.val.scalar, rsp->data,
+					param->val_len);
+			param->printer(&param_value, param->val_len);
+		}
+	} else {
+		printf("Command failed: %s\n",
+				val2str(rsp->ccode, completion_code_vals));
+		return -1;
+	}
+
+	return 0;
+
+cx_logging_main_error_out:
+	cx_logging_usage();
+	return -1;
 }
 
 static void cx_data_usage(void)
@@ -4714,6 +5281,9 @@ int ipmi_cxoem_main(struct ipmi_intf *intf, int argc, char **argv)
 		rc = cx_feature_main(intf, argc - 1, &argv[1]);
 	} else if (!strncmp(argv[0], "pmic", 4)) {
 		rc = cx_pmic_main(intf, argc - 1, &argv[1]);
+	} else if (!strncmp(argv[0], "logging", 7)) {
+		rc = cx_logging_cmd_parser(intf, cx_logging_main_arg, argc - 1,
+				&argv[1]);
 	}
 
 	return rc;
