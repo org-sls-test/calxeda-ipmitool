@@ -1406,6 +1406,7 @@ cx_fabric_cmd_t get_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_STATUS,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_UPLINK_INFO,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_CHASSIS_SERIAL_NUM,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_MGMT_VIEW,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_BCVEC},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
@@ -1439,6 +1440,7 @@ cx_fabric_cmd_t set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_IPADDR_BASE,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINKSPEED_POLICY,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_CHASSIS_SERIAL_NUM,
+	 IPMI_CMD_OEM_FABRIC_PARAMETER_MGMT_VIEW,
 	 IPMI_CMD_OEM_FABRIC_PARAMETER_LINK_USERS_FACTOR},
 	{IPMI_CMD_OEM_FABRIC_SPECIFIER_NODE,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_INTERFACE,
@@ -1447,6 +1449,8 @@ cx_fabric_cmd_t set_cmd = {
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_CONFIGURATION,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PARTITION,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_MAC,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_LOGICAL,
+	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PHYSICAL,
 	 IPMI_CMD_OEM_FABRIC_SPECIFIER_PROFILE},
 	{0, 0, 0, 0, 0}
 };
@@ -1882,6 +1886,13 @@ cx_fabric_param_t mgmt_mode_param = {
 	cx_fabric_string_printer
 };
 
+cx_fabric_param_t mgmt_view_param = {
+	"mgmt_view",
+	IPMI_CMD_OEM_FABRIC_PARAMETER_MGMT_VIEW,
+	{0, 0, 0, 0, 0},
+	Cx_Fabric_Arg_Invalid, MAX_VAL_STRING,
+	cx_fabric_string_printer
+};
 
 cx_fabric_param_t linkmap_param = {
 	"linkmap",
@@ -2157,6 +2168,20 @@ cx_fabric_spec_t shared_spec = {
 	NULL
 };
 
+cx_fabric_spec_t logical_spec = {
+	"logical",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_LOGICAL,
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
+cx_fabric_spec_t physical_spec = {
+	"physical",
+	IPMI_CMD_OEM_FABRIC_SPECIFIER_PHYSICAL,
+	Cx_Fabric_Arg_Invalid, 0,
+	NULL
+};
+
 cx_fabric_spec_t mac_spec = {
 	"mac",
 	IPMI_CMD_OEM_FABRIC_SPECIFIER_MAC,
@@ -2259,6 +2284,7 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"linkspeed", Cx_Fabric_Arg_Parameter, (void *)&linkspeed_param},
 	{"link_resilience", Cx_Fabric_Arg_Parameter, (void *)&link_resilience_param},
 	{"network", Cx_Fabric_Arg_Parameter, (void *)&network_param},
+	{"mgmt_view", Cx_Fabric_Arg_Parameter, (void *)&mgmt_view_param},
 	{"ls_policy", Cx_Fabric_Arg_Parameter, (void *)&linkspeed_policy_param},
 	{"lu_factor", Cx_Fabric_Arg_Parameter,
 	 (void *)&link_users_factor_param},
@@ -2310,6 +2336,8 @@ cx_fabric_arg_t cx_fabric_main_arg[] = {
 	{"config", Cx_Fabric_Arg_Specifier, (void *)&configuration_spec},
 	{"part", Cx_Fabric_Arg_Specifier, (void *)&partition_spec},
 	{"profile", Cx_Fabric_Arg_Specifier, (void *)&profile_spec},
+	{"logical", Cx_Fabric_Arg_Specifier, (void *)&logical_spec},
+	{"physical", Cx_Fabric_Arg_Specifier, (void *)&physical_spec},
 	{NULL, Cx_Fabric_Arg_Invalid, (void *)NULL},
 };
 
