@@ -85,7 +85,7 @@
 #define CX_DATA_BAD_LENGTH -2
 #define CX_DATA_OK 0
 
-#define CX_MAX_PTYPE 0x11
+#define CX_MAX_PTYPE 0x13
 const struct valstr cx_ptypes[] = {
 	{0x00, "DEL"},
 	{0x01, "DEL1"},
@@ -105,6 +105,8 @@ const struct valstr cx_ptypes[] = {
 	{0x0f, "DIAG_ELF"},
 	{0x10, "XACTION_LOG"},
 	{0x11, "ROM_INFO"},
+	{0x12, "PARTITION_TABLE"},
+	{0x13, "LUAMAN"},    
 };
 
 const struct valstr cx_tftp_status[] = {
