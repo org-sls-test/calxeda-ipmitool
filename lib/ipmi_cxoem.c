@@ -598,7 +598,7 @@ int cx_fw_info(struct ipmi_intf *intf, int partition)
 		printf("%-18s : %08x\n", "Daddr", header.daddr);
 		printf("%-18s : %08x\n", "Flags", header.flags);
 		if (header.hdrfmt >= 2)
-			printf("%-18s : %s\n", "Version", header.version);
+			printf("%-18s : %.32s\n", "Version", header.version);
 		else
 			printf("%-18s : Unknown\n", "Version");
 		if (ii[i].in_use <= 1)
