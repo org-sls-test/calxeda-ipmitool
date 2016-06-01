@@ -7,3 +7,11 @@ before_script:
 - ./configure
 script:
 - make
+deploy:
+  skip_cleanup: true
+  provider: releases
+  api_key:
+    secure: qKREbfd0+0bXORIUDX+LVaqI36eSQ5sq7lysJ1ApiNbpUwsjAzk9/4+xD5K1hs2kdcsx78RjDPWyQlbh4faXsyLMGH2kJzsafkKkor+zEt484PfiRWpJAUrH1rt6FAUw0EX6ACoWEQRYI6id+wQrgkVVfYHMXo5OWASn+VunrvvmqDcLESwCs5uprZrW8annO15M8fOdb1rp429jZWT8b+3YzrCO90a1GpH3znDwl1aJUczX7rXWnO+FRjt8rqKBJVPXfo+V7ISYn6Q0oyW6YIY7qvtTr+qca3nB5n5wek9iwuIWq2hKZoQWmISm7WgedHLtb6GmImYGocamhNTK5GTHAsWzxVV5O50ZPS9JfRyxFMeoHGKRZ48svb3nzISwwmODA+Snk2p4VB+vToimYyAiyy5N3MRcXy4i4WuQ0HUuVvJL/XEcR4BcRgWINrVy/BJydKxuj5Bpcy/zdhYdeq55hNodLHORBizqzcvENiLQMHJztWU2yFDhHk2AtRWIHmX7AabiFZtFovgySCfAUlvCpaNA4eyde7lhGfP2PEn2u1bPYP9hEj31uD9Mm/pwho14ZjVMcxMqhneq/RVYv3r9oAQkpWTUrxsgc12TMZ500rqQ9QLLJ4Z7XqIFGnTuTLjLWLXqt5JzgIYpXuF3D9nII6cBi2L7Gc3vGUcUVTg=
+  file: src/ipmitool
+  on:
+    tags: true
