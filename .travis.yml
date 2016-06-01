@@ -1,0 +1,9 @@
+language: c
+os:
+- linux
+complier:
+- gcc
+before_script:
+- ./configure
+script:
+- make
