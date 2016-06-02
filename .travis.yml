@@ -23,5 +23,6 @@ deploy:
     tags: true
 
 env:
-  - ARCH=i386
+  matrix:
+    - ARCH=i386
     - ARCH=x86_64
