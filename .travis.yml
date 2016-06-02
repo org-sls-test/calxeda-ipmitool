@@ -9,7 +9,7 @@ addons:
 complier:
   - gcc
 script:
-  - build.sh
+  - /bin/sh build.sh
 deploy:
   skip_cleanup: true
   provider: releases
