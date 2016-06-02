@@ -5,6 +5,7 @@ addons:
   apt:
     packages:
       - gcc-multilib
+      - libssl-dev
       - libssl-dev:i386
 complier:
   - gcc
