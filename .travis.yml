@@ -1,12 +1,15 @@
 language: c
 os:
 - linux
+addons:
+  apt:
+    packages:
+      - gcc-multilib
+      - libssl-del:i386
 complier:
-- gcc
-before_script:
-- "./configure"
+  - gcc
 script:
-- make
+  - build.sh
 deploy:
   skip_cleanup: true
   provider: releases
