@@ -5,13 +5,8 @@ complier:
   - gcc
 before_install:
   - sudo apt-get -qq update
-  - if [[ $ARCH == "i386" ]]; then sudo apt-get install gcc-multilib libssl-dev:i386; fi
-  - if [[ $ARCH == "x86_64" ]]; then sudo apt-get install libssl-dev; fi
-install:
-  - if [[ $ARCH == "i386" ]]; then ./configure --build=i686-pc-linux-gnu "CFLAGS=-m32" "CXXFLAGS=-m32" "LDFLAGS=-m32"; fi
-  - if [[ $ARCH == "x86_64" ]]; then ./configure; fi
 script:
-  - make
+  - /bin/sh build.sh
 deploy:
   skip_cleanup: true
   provider: releases
@@ -21,8 +16,3 @@ deploy:
   file: "release/ipmitool*"
   on:
     tags: true
-
-env:
-  matrix:
-    - ARCH=i386
-    - ARCH=x86_64
