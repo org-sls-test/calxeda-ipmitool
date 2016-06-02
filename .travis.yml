@@ -4,7 +4,7 @@ os:
 complier:
   - gcc
 before_install:
-  - sudo apt-get --qq update
+  - sudo apt-get -qq update
   - if [[ $ARCH == "i386" ]]; then sudo apt-get install gcc-multilib libssl-dev:i386; fi
   - if [[ $ARCH == "x86_64" ]]; then sudo apt-get install libssl-dev; fi
 install:
