@@ -2,13 +2,12 @@ language: c
 os:
 - linux
 complier:
-  - gcc
+- gcc
 before_install:
-  - sudo apt-get -qq update
+- sudo apt-get -qq update
 script:
 - "/bin/sh build.sh"
 before_deploy:
-- echo ++start deploy++
 - git config --global user.email "builds@travis-ci.com"
 - git config --global user.name "Travis CI"
 - export VERSION=`grep -r CX_VERSION include/ipmitool/ipmi_cxoem.h  | awk '{print $3}' | sed 's/["-]//g'`
@@ -34,4 +33,4 @@ branches:
   - "/^cx[0-9]/"
 env:
   global:
-    secure: mHbvlFLHE2e4tYuSUPBrBxtnSk2CWec7rRYmxNbAgTCBz0jxJyfF7OFrxN8lVgPljjak1usslqAZONZjjh6rPDLm146RPkjmUg5uJZCeYF8m5Z8uCjGoPk8Ci+Q6qFTuS6xMngJsIs0sE58kA5FKZkKCw66FZs9QCINJqGyq0grj1qgaydSxtY9LJYnwIq7+dkVjYb/7nKrNinU4CE2Gz5Fym1u8EHWZVnzkIS0KPiBqpanA1wN80fW2TloQtRJuZb27rvQdUbdLfVpXTO+JaHi3qCHtPfetLIrlkoknO6KgKuAZ2ZfRswTmp/HDEWrmjTYTLynU7LPXKXdobyVsmU9DnyjLPr/v15LLmvizhEwKn2PO2lbbGsQ3OaAYncAJeKS7ljoJAsiqbv+MSsRqZX4JoUoZ8iBf2Sosy+KL4JHjeZE3kcB5AUuijy+OLBDEN/6aq4Jszbtk1AYFDiO0hbna195F4m/Al1LqCZ0tFAIZsjYQlTst78+8efkLPTUGXlhLlJY57sTag+Fr0BZ+h5c8IYwsFOlLMW/qUnflsCMLiVom2fTdXIDC7fr15Q99+KpDNFbRI26f5CvMlvM/p1c94n+RwPCfbMCzcyh9O3JnhMxhq2U7vz6rpXs++TJpJ+h6wip0NPVkejPNStg9fHSIHr2JVzXaEmMr1iT4+4U=
+    secure: sKM74Uu2aN0xwH5OMlJHnWZ02pluyFegjSej/tRk1sjLvIRDNq7KfA+iu16rDjawd4McwNdqmVdC9cfh99fLcNyQ6Hpv7ieRNMznVfqiv1E78y5O5e/5BGQ9SZpM4AZpQejUCV4lT4LL+14aEqEMBD5t4jbeVMsnctvV8Z53Q/7bcEx5OzbGIKO59qycLVzocPFjWQUliZnP21D1r07Iss3meQTY/PAGHBdzdTQ6OrlOsaf53X8i6U78QIV4fMvqXSfG3ZWJyI6yEoeBpGtMS4MwvnSK+87LGnz9vakBVaLC0B9Ha8KH3rMZ1yCDRfb396m73jSLONKFeOScbdBdS0yQM4RJy/F0Iz8caJRHzZqS1SiNLZ6h93tntgAXX5cJf/4Y/fM8pfgPlsZETxb3VQrppAYagps1zd/EoFvPNvEfm5Mi/fRz2+B879kapZJpJBB7wfMH9//HSR/vTDHBCH7WrqlNz41OwbqrbFN+5JxIrDHY6Set10qA2hlHBY8plAa3y6yNSYSBmx3EpQrfQk/iKxA8zV0b5DVJO9yJyQJjvugwiOJMWfpyWbyHSnYonnDKxALo7tWZKPiZuzvz3OmOqfsu7bxk3sThyH4GEpL1GJ8f+DXDHRs6B2WY61XNluMijq2ux0XnMVgEzvNSMBxdK4l4TyeiOSQYRjOo7mA=
