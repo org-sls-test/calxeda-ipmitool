@@ -4738,6 +4738,7 @@ static int cx_info_main(struct ipmi_intf *intf, int argc, char **argv)
 			uint16_t fabric_node_id;
 			uint8_t slot_number;
 			uint8_t local_node_id;
+			uint32_t primary_node_id;
 		} __attribute__ ((packed));
 		typedef struct oem_device_info_node_s oem_device_info_node_t;
 
@@ -4765,6 +4766,9 @@ static int cx_info_main(struct ipmi_intf *intf, int argc, char **argv)
 					       node_rs->slot_number);
 					printf("Local Node ID = %d\n",
 					       node_rs->local_node_id);
+					printf("Primary Node ID = %d\n",
+					       node_rs->primary_node_id);
+
 				}
 			}
 		}
