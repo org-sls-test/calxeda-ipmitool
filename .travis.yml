@@ -9,8 +9,8 @@ script:
 - "/bin/sh build.sh"
 before_depoly:
 - git config --global user.email "builds@travis-ci.com"
-- git config --global user.name "Travis CI" export VERSION=`grep -r CX_VERSION include/ipmitool/ipmi_cxoem.h
-  | awk '{print $3}' | sed 's/["-]//g'`
+- git config --global user.name "Travis CI"
+- export VERSION=`grep -r CX_VERSION include/ipmitool/ipmi_cxoem.h  | awk '{print $3}' | sed 's/["-]//g'`
 - export GIT_TAG=$VERSION.$TRAVIS_BRANCH.Build$TRAVIS_BUILD_NUMBER
 - echo $GIT_TAG
 - git tag $GIT_TAG -f -a -m "Generated tag from TravisCI for build $TRAVIS_BUILD_NUMBER"
