@@ -12,7 +12,7 @@ before_deploy:
 - git config --global user.name "Travis CI"
 - export VERSION=`grep -r CX_VERSION include/ipmitool/ipmi_cxoem.h  | awk '{print $3}' | sed 's/["-]//g'`
 - echo $VERSION
-- if [ "$TRAVIS_BRANCH" == "master" ]; then export GIT_TAG=$$VERSION ; else export GIT_TAG=$VERSION.$TRAVIS_BRANCH.Build$TRAVIS_BUILD_NUMBER ; fi
+- if [ "$TRAVIS_BRANCH" == "master" ]; then export GIT_TAG=$VERSION ; else export GIT_TAG=$VERSION.$TRAVIS_BRANCH.Build$TRAVIS_BUILD_NUMBER ; fi
 - echo $GIT_TAG
 - git tag $GIT_TAG -f -a -m "Generated tag from TravisCI for build $TRAVIS_BUILD_NUMBER"
 - git push -f https://$GITPERM@github.com/org-sls-test/calxeda-ipmitool --tags
