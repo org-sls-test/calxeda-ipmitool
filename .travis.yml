@@ -18,10 +18,10 @@ before_depoly:
 - export RELEASE_FILE=$(ls release/*.tar.gz)
 - echo "deploying $RELEASE_FILE to Github releases"
 deploy:
-  skip_cleanup: true
-  provider: releases
+- provider: releases
   api_key:
     secure: BVUZdalozRETSfkhVOC87h4RwFswNSKhD8mGVu+v3s7Mf7FR3+75hFQs893P7eO2itQlZQEf5yIpjtw8IguzBSmta5Dxwwz+Aga2sQuRWvHNobgh4kXGisAltKxwa8bIBowsDYV3F1LdQpPn/Pn+cHG37NIkhHLfyxDwTnaNbPiys1BSPDGyMj/RaaZ+xhVGvkWH2uQ7eKH9NThy6snlj8wbpMtqwdcMYyzMxufa6H6crZiK+Z24V8o40KNKUBHwRjba/5HtyDxaCgdXd+Lx99XV0OxsE6vXSwd/wCB3X42kApYsCdVNzK3IhB7b6RjiydPBBV8wT9S85SR/OWjxKWgXUdyMb09eeXRSPp/fBPP6b2So/u8mMM6JQDeiCdFLgvfcDBoMdE161l4/vprN3ewIlV4cEyA/6FV34nQz3kx8Ho3Qx3pnirisPz5nuAURNqO3tEOyeLG974nnU0BGw3j4fB35TWHuTup3qhBUvRpBYmtdE7ltgIsA+S19XecmmQvkfMg5staENiPGaNldwVNOQ125VSTyrr0KddrLFggvoFAn6hxXF7zBhi2S+Iqt+Ef9ehgbmsA/7M3Ta5Cq/D8h0Fw2uUY+uJWPFzKW0GSZ4tQ6GPqTeFloLmJR3fIP3G4V2BO/xN1VXyn/0anKogCLyRzquqjm7qGAjmCd78Q=
+  skip_cleanup: true
   file_glob: true
   file: "$RELEASE_FILE"
   on:
