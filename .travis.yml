@@ -27,7 +27,7 @@ deploy:
   file: release/*.tar.gz
   on:
     tags: false
-    all_branch: true
+    all_branches: true
 branches:
   except:
   - "/^cx[0-9]/"
