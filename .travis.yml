@@ -4,8 +4,6 @@ os:
 - osx
 complier:
 - gcc
-before_install:
-- sudo apt-get -qq update
 script:
 - "/bin/sh build.sh"
 before_deploy:
