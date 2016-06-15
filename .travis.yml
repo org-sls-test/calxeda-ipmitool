@@ -4,6 +4,8 @@ os:
 - osx
 complier:
 - gcc
+before_install:
+- if [ $TRAVIS_OS_NAME = "linux" ]; then sudo apt-get -qq update; fi
 script:
 - "/bin/sh build.sh"
 before_deploy:

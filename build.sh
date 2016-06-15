@@ -6,7 +6,6 @@ mkdir release
 echo Build for $TRAVIS_OS_NAME
 
 if [ $TRAVIS_OS_NAME = "linux" ];then
-	sudo apt-get -qq update
 	echo "### 64bit version ###"
 	sudo apt-get install libssl-dev
 	./configure
